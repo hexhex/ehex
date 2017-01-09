@@ -310,7 +310,7 @@ def guess_and_check(modals):
             prog.statements.append(guessing)
             continue
 
-        domain_vars = ['X{}'.format(i) for i, in enumerate(Terms(modal))]
+        domain_vars = ['X{}'.format(i) for i, _ in enumerate(Terms(modal))]
         domain_rule = rule(
             atom(aux_name(modal.literal.symbol, 'DOMAIN'), domain_vars),
             envelope_atom(atom(modal.literal.symbol, domain_vars))

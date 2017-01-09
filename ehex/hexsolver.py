@@ -6,7 +6,7 @@ from subprocess import (
 
 
 def solve(*args, text='', pfilter=None):
-    cmd = ['dlvhex2', '--silent', '--maxint=1']
+    cmd = ['dlvhex2', '--silent']
     if pfilter is not None:
         cmd += ['--filter=' + ','.join(pfilter or [])]
     cmd += args
