@@ -1,0 +1,168 @@
+@@grammar :: HEXAnswerSet
+
+
+start = result $ ;
+
+result
+    =
+    answer_sets
+    ;
+
+
+answer_sets = {answer_set}*;
+
+
+answer_set::set
+    =
+    CURLY_OPEN ~ @:literals CURLY_CLOSE
+    ;
+
+
+literals = (COMMA).{literal}*;
+
+
+literal
+    =
+    | atom
+    | default_negated_literal
+    | modal_literal
+    | strong_negated_atom
+    ;
+
+# aux__NOT_K_SNEG  →  not K ¬l
+# aux__M_SNEG      →  M ¬l
+# aux__NOT_SNEG    →  not ¬l
+# aux__NOT_K       →  not K l
+# aux__M           →  M l
+# aux__NOT         →  not l
+
+
+default_negated_literal::DefaultNegation
+    =
+    AUX_MARKER DNEG_PREFIX ~ /_/ literal:(modal_literal | strong_negated_atom | atom)
+    ;
+
+
+modal_literal::Modal
+    =
+    [AUX_MARKER] op:(K_PREFIX | M_PREFIX) ~ /_/ literal:(strong_negated_atom | atom)
+    ;
+
+
+atom::Atom
+    =
+    !([AUX_MARKER] (SNEG_PREFIX | K_PREFIX | M_PREFIX | DNEG_PREFIX)) ~
+    symbol:predicate_symbol [PAREN_OPEN [arguments:terms] PAREN_CLOSE]
+    ;
+
+
+strong_negated_atom::StrongNegation
+    =
+    | op:MINUS ~ atom:atom
+    | [AUX_MARKER] SNEG_PREFIX ~ op:() /_/ atom:atom
+    ;
+
+
+predicate_symbol = ID ;
+
+
+terms = (COMMA).{term}+ ;
+
+
+term
+    =
+    | arith_expr
+    | basic_term
+    ;
+
+
+arith_expr
+    =
+    | additive
+    | multiplicative
+    ;
+
+
+additive::AdditiveTerm::Term
+    =
+    @+:arith_term {@:(PLUS | MINUS) ~ @:arith_term}+
+    ;
+
+
+arith_term = multiplicative | basic_term ;
+
+
+multiplicative::MultiplicativeTerm::Term
+    =
+    @+:arith_factor {@:(TIMES | DIV) ~ @:arith_factor}+
+    ;
+
+
+arith_factor = basic_term ;
+
+
+basic_term =
+    | functional
+    | constant
+    | variable
+    | subterm
+    | negative_term
+    ;
+
+
+functional::FunctionalTerm::Term
+    =
+    symbol:function_symbol PAREN_OPEN ~ [arguments:terms] PAREN_CLOSE
+    ;
+
+
+function_symbol = ID ;
+
+
+subterm::SubTerm::Term
+    =
+    PAREN_OPEN ~ @:term PAREN_CLOSE
+    ;
+
+
+negative_term::NegativeTerm::Term
+    =
+    MINUS ~ term
+    ;
+
+
+constant::ConstantTerm::Term
+    =
+    | STRING
+    | ID
+    | NUMBER
+    ;
+
+
+variable::VariableTerm::Term
+    =
+    | ANONYMOUS_VARIABLE
+    | VARIABLE
+    ;
+
+
+ID = /[a-z][a-zA-Z0-9_]*/ ;
+VARIABLE = /[A-Z][a-zA-Z0-9_]*/ ;
+STRING = /"(?:\\"|[^"])*"/;
+NUMBER::int = /0|\d+/ ;
+ANONYMOUS_VARIABLE = '_' ;
+COMMA = ',' ;
+PLUS = '+' ;
+MINUS = '-' ;
+TIMES = '*' ;
+DIV = '/' ;
+PAREN_OPEN = '(' ;
+PAREN_CLOSE = ')' ;
+CURLY_OPEN = '{' ;
+CURLY_CLOSE = '}' ;
+
+AUX_MARKER = /aux__/ ;
+DNEG_PREFIX = /NOT/ ;
+K_PREFIX = /K/ ;
+M_PREFIX = /M/ ;
+SNEG_PREFIX = /NEG/ ;

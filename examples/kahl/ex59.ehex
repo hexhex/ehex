@@ -1,0 +1,9 @@
+% Example 59: "Program with Multiple K and M Constraint"
+%
+% World view {{p, r}}} wrt {M p, not K q}
+% World view {{q, s}}} wrt {M q, not K p}
+
+p v q.
+r ← K p.
+s ← K q.
+← M p, M q.

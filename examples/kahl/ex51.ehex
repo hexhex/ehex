@@ -1,0 +1,6 @@
+% Example 51: "Program with Externally-Supported M-Cycle"
+%
+% World view {{p}} wrt {M p}
+
+p v ¬p.
+p ← M p.

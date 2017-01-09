@@ -1,0 +1,14 @@
+% Example 13: "Disjunctive Program with Multiple Cycles"
+%
+% World view {{p, q}, {p, r}} wrt {}
+
+p v q v r v s v t.
+p ← q.
+p ← r.
+p ← s.
+p ← t.
+q v r ← p.
+s ← p, q, t.
+s ← p, r, t.
+t ← p, q, s.
+t ← p, r, s.

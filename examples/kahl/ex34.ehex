@@ -1,0 +1,6 @@
+% Example 34: "Supported M-Literal"
+%
+% World view {{p, r}, {q, r}} wrt {M q}
+
+p v q.
+r ← M q.

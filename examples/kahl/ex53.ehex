@@ -1,0 +1,6 @@
+% Example 53: "Disjunctive Program with M-Cycle"
+%
+% World view {{p}, {q, r}} wrt {M p}
+
+p v q.
+p v r ← M p.

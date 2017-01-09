@@ -1,0 +1,6 @@
+% Example 57: "Another Disjunctive Program with Multiple M-Literals"
+%
+% World view {{p, s}, {q, s}, {r, s}} wrt {M p, M q}
+
+p v q v r.
+s ← M p, M q.

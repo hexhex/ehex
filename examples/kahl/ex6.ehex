@@ -1,0 +1,6 @@
+% Example 6: "Program with M-Cycle Involving Multiple M-Literals"
+%
+% World view {{p, q}} wrt {M p, M q}
+
+p ← M q.
+q ← M p.

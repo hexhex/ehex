@@ -1,0 +1,7 @@
+% Example 62: "Program with Disjunction, M-Cycle, and not M"
+%
+% World view {{p}} wrt {M p}
+
+p v ¬p.
+p ← M p.
+¬p ← not M p.

@@ -1,0 +1,6 @@
+% Example 3: "Two-Line Program with M-Cycle"
+%
+% World view {{p, q}} wrt {M p}
+
+p ← q.
+q ← M p.

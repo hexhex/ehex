@@ -1,0 +1,8 @@
+% Example 30: "Another Mutual Dependency with M-Cycle"
+%
+% World view {{p}, {q}} wrt {M p, M q}
+% XXX World view {{r}, {s}, {t}} wrt {}
+
+p ← M q, not q.
+q ← M p, not p.
+r v s v t ← not p, not q.

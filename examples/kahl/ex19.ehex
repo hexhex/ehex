@@ -1,0 +1,10 @@
+% Example 19: "Program with Multiple not M"
+%
+% World view {{p, u, v}, {q, r, u, v}} wrt {M q, M r}
+
+p v q.
+p v r.
+s ← not M q.
+t ← not M r.
+u ← not s.
+v ← not t.

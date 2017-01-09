@@ -1,0 +1,5 @@
+% Example 18: "Program with K-Cycle"
+%
+% World view {{}} wrt {not K p}
+
+p ← K p.

@@ -1,0 +1,7 @@
+% Example 10: "Disjunctive Program with Cycle and Default Negation"
+%
+% World view {{p, r}} wrt {}
+
+p v q.
+p ← q.
+r ← not q.

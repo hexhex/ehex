@@ -1,0 +1,106 @@
+% Yale Shooting Problem
+% XXX citation needed
+
+
+max_horizon(3).
+horizon(X) ← #int(X), X <= Y, max_horizon(Y).
+action(pull_trigger).
+action(load).
+state(alive).
+state(loaded).
+state(is_impossible).
+
+
+% Translated domain description
+
+¬holds(alive, T) ←
+    occurs(pull_trigger, S),
+    holds(loaded, S),
+    not holds(is_impossible, T),
+    T = S + 1,
+    horizon(S),
+    horizon(T).
+
+
+¬holds(loaded, T) ←
+    occurs(pull_trigger, S),
+    not holds(is_impossible, T),
+    T = S + 1,
+    horizon(S),
+    horizon(T).
+
+
+holds(loaded, T) ←
+    occurs(load, S),
+    not holds(is_impossible, T),
+    T = S + 1,
+    horizon(S),
+    horizon(T).
+
+
+holds(is_impossible, T) ←
+    occurs(load, S),
+    holds(loaded, S),
+    T = S + 1,
+    horizon(S),
+    horizon(T).
+
+
+% Inertia and awareness axioms
+
+holds(F, T) ←
+    holds(F, S),
+    not ¬holds(F, T),
+    state(F),
+    T = S + 1,
+    horizon(S),
+    horizon(T).
+
+
+¬holds(F, T) ←
+    ¬holds(F, S),
+    not holds(F, T),
+    state(F),
+    T = S + 1,
+    horizon(S),
+    horizon(T).
+
+
+holds(F, 0) v ¬holds(F, 0) ← state(F).
+
+
+% Initial condition
+
+holds(alive, 0).
+¬holds(is_impossible, 0).
+
+
+% Goal
+
+goal(S) ←
+    ¬holds(alive, S),
+    ¬holds(is_impossible, S),
+    horizon(S).
+
+
+% Conformant planning module
+
+occurs(A, S) ←
+    M occurs(A, S),
+    action(A),
+    S < Y,
+    horizon(S),
+    max_horizon(Y).
+
+
+¬occurs(A2 , S) ←
+    occurs(A1 , S),
+    A1 != A2,
+    action(A1),
+    action(A2),
+    horizon(S).
+
+
+success ← goal(X), max_horizon(X).
+← success, not K success.
+← not M success.

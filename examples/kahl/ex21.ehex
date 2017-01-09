@@ -1,0 +1,6 @@
+% Example 21: "Simple Program with One World View"
+%
+% World view {{q}} wrt {not K p}
+
+p ← not q.
+q ← not K p.

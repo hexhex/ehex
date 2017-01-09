@@ -1,0 +1,6 @@
+% Example 50: "Program with Rule Acting as Constraint"
+%
+% World view {{p}} wrt {M p}
+
+p v q.
+p ← M p, M q.

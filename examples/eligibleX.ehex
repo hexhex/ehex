@@ -1,0 +1,38 @@
+eligible(X) :- highGPA(X).
+eligible(X) :- minority(X), fairGPA(X).
+-eligible(X) :- lowGPA(X).
+interview(X) :- not K eligible(X), not K -eligible(X), student(X).
+
+fairGPA(X) v highGPA(X) :- student(X).
+student(c0).
+% student(c1).
+% student(c2).
+% student(c3).
+% student(c4).
+% student(c5).
+% student(c6).
+% student(c7).
+% student(c8).
+% student(c9).
+% student(cA).
+% student(cB).
+% student(cC).
+% student(cD).
+% student(cE).
+% student(cF).
+% student(c10).
+% student(c11).
+% student(c12).
+% student(c13).
+% student(c14).
+% student(c15).
+% student(c16).
+% student(c17).
+% student(c18).
+% student(c19).
+% student(c1A).
+% student(c1B).
+% student(c1C).
+% student(c1D).
+% student(c1E).
+% student(c1F).

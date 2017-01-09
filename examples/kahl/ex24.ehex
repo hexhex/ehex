@@ -1,0 +1,6 @@
+% Example 24: "Simple Program with M and Constraint"
+%
+% World view {{}} wrt {}
+
+q ← M p.
+← p.

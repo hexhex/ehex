@@ -1,0 +1,7 @@
+% Example 12: "Disjunctive Program with Head Cycle"
+%
+% World view {{p, q}} wrt {}
+
+p v q.
+p ← q.
+q ← p.

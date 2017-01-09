@@ -1,0 +1,6 @@
+% Example 25: "Two-Line Disjunctive Program with K"
+%
+% World view {{p, r}} wrt {}
+
+p v q ← K r.
+r ← not q.

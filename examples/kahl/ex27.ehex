@@ -1,0 +1,6 @@
+% Example 27: "Apparent Tautology: K and not K"
+%
+% No world view
+
+p ← K p.
+p ← not K p.

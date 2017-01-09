@@ -1,0 +1,7 @@
+% Example 35: "Program Demonstrating New Modal Reduct"
+%
+% World view {{p}} wrt {M p}
+% World view {{q}} wrt {M q}
+
+p v q.
+← M p, M q.

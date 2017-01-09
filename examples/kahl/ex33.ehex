@@ -1,0 +1,6 @@
+% Example 33: "Another Motivating Example for New Modal Reduct"
+%
+% World view {{p}} wrt {}
+
+p v q.
+p ← M q.

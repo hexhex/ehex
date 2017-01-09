@@ -1,0 +1,6 @@
+% Example 61: "Program with Disjunction and M-Cycle"
+%
+% World view {{p}} wrt {M p}
+
+p v ¬p.
+p ← M p.

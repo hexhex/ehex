@@ -1,0 +1,7 @@
+% Example 11: "Disjunctive Program with Cycle and Constraint"
+%
+% No world view
+
+p v q.
+p ← q.
+← p, not q.

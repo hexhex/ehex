@@ -1,0 +1,5 @@
+% Example 1: "One-Line Program with M-Cycle"
+%
+% World view {{p}} wrt {M p}
+
+p ← M p.

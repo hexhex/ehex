@@ -1,0 +1,6 @@
+% Example 28: Apparent Tautology: M and not M
+%
+% World view {{p}} wrt {M p}
+
+p ← M p.
+p ← not M p.

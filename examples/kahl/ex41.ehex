@@ -1,0 +1,6 @@
+% Example 41: "Program with not K"
+%
+% World view {{p}, {q}} wrt {not K p}
+
+p ← not q.
+p v q ← not K p.

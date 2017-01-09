@@ -1,0 +1,8 @@
+% Example 17: "Disjunctive Program with M and not M"
+%
+% World view {{p}, {q}} wrt {M p}
+% World view {{q, r}} wrt {M r}
+
+p v q.
+r ← not M p.
+¬p ← M r, not q.

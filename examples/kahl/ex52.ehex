@@ -1,0 +1,9 @@
+% Example 52: "Program with Multiple M-Cycles"
+%
+% World view {{p, q, r}} wrt {M p, M q, M r}
+
+p ← M p.
+q ← M q.
+r ← p, q.
+p ← M r.
+q ← M r.

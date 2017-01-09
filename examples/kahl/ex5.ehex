@@ -1,0 +1,10 @@
+% Example 5: "Program with Chain of Externally-Supported M-Cycles and Constraint"
+%
+% World view {{p, q, s}, {p, r, s}} wrt {M p, M s}
+
+p v q.
+q v r.
+p ← M p.
+s ← p, q.
+s ← M s.
+← p, not s.
