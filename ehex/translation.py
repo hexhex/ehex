@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=fixme
 
-"""We apply a variant of the following tranlation rules from Kahl et al. 2016:
+"""We apply a variant of the following translation rules from Kahl et al. 2016:
 
         ┌───────────────┬──────────────┬────────────────────────┐
         │ Modal literal │ Replace with │ Add rules              │
