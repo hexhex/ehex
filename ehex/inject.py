@@ -19,10 +19,16 @@ from ehex import (
 )
 
 
+def remove_prefix(name, prefix):
+    if name.startswith(prefix):
+        return name[len(prefix):]
+    return name
+
+
 def aux_name(symbol, prefix=''):
     prefix += '_' if prefix else ''
     return '{}{}{}'.format(
-        AUX_MARKER, prefix.upper(), symbol.lstrip(AUX_MARKER))
+        AUX_MARKER, prefix.upper(), remove_prefix(symbol, AUX_MARKER))
 
 
 def atom(symbol, terms=None):
