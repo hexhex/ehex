@@ -1,4 +1,3 @@
-from pathlib import Path
 from ehex.hexsolver import solve as dlvhex
 from ehex.codegen import EHEXCodeGenerator
 
@@ -37,34 +36,34 @@ def parse_program(program_path):
     return RewriteStrongNegationWalker().walk(parsed)
 
 
-def get_envelope(program, envelope_path=None, debug=False):
+def get_envelope(program, options):
     oa_walker = OverApproximationWalker().walk
     envelope_src = render(oa_walker(program))
-    if debug:
-        assert envelope_path is not None
-        with open(str(envelope_path), 'w') as envelope_file:
+    if options.debug:
+        with options.envelope_out.open('w') as envelope_file:
             envelope_file.write(envelope_src)
         print('Computing positive envelope and terms:')
-        results = dlvhex(str(envelope_path))
+        results = dlvhex(str(options.envelope_out))
     else:
         results = dlvhex(text=envelope_src)
     parse = answerset.parse
     envelope = list(next(parse(results)))
     terms = set(render(term) for term in Terms(envelope))
-    if debug:
+    if options.debug:
         as_render = answerset.render_answer_set
         print('Envelope:', as_render(envelope))
         print('Terms:', as_render(terms))
     return envelope, terms
 
 
-def compute_max_level(modals, domain, max_level=None, debug=False):
+def compute_max_level(modals, domain, options):
     cmax_level = sum(  # TODO: not optimal
         len(domain)**sum(1 for var in Variables(m))
         for m in modals
     )
-    if debug:
+    if options.debug:
         print('Computed maximum level is {}.'.format(cmax_level))
+    max_level = options.max_level
     if max_level is None:
         max_level = cmax_level
     else:
@@ -110,18 +109,11 @@ def program_rules(program, modals):
     yield from inject.guess_assignment_rules(modals)
 
 
-def solve(file_name, debug=False, max_level=None):
-    p = Path(file_name)
-    program_path = Path(p.parent, p.stem + '.hex')
-    guess_path = Path(p.parent, p.stem + '.guess.hex')
-    envelope_path = Path(p.parent, p.stem + '.envelope.hex')
-
-    program = parse_program(p)
-    envelope, domain = get_envelope(program, envelope_path, debug=debug)
+def solve(options):
+    program = parse_program(options.src)
+    envelope, domain = get_envelope(program, options)
     modals = Modals(program)
-    max_level = compute_max_level(
-        modals, domain, max_level=max_level, debug=debug
-    )
+    max_level = compute_max_level(modals, domain, options)
 
     modal_predicates = {
         (modal.literal.symbol, len(modal.literal.arguments or ()))
@@ -148,15 +140,18 @@ def solve(file_name, debug=False, max_level=None):
         inject.guess_and_check_rules(modals, envelope, domain)
     )
     program_src = (render(inject.program(program_rules(program, modals))))
-    with open(str(program_path), 'w') as program_file:
+    with options.program_out.open('w') as program_file:
         # This file is mandatory for HEX inspection
         program_file.write(program_src)
     path_atom = inject.fact(
-        inject.atom(inject.aux_name('PATH'), '"{}"'.format(program_path))
+        inject.atom(
+            inject.aux_name('PATH'),
+            '"{}"'.format(options.program_out),
+        )
     )
     guess_src = (render(path_atom) + '\n\n' + render(gc_program))
-    if debug:
-        with open(str(guess_path), 'w') as guess_file:
+    if options.debug:
+        with options.guess_out.open('w') as guess_file:
             guess_file.write(guess_src)
 
     parse = answerset.parse
@@ -167,26 +162,26 @@ def solve(file_name, debug=False, max_level=None):
 
     while level <= max_level:
         world_views = {}
-        input_src = render(inject.level_constraint(level)) + '\n'
+        level_src = render(inject.level_constraint(level)) + '\n'
         if level > 0 and solved_src:
-            input_src += '\n' + solved_src + '\n'
+            level_src += '\n' + solved_src + '\n'
             for rule in inject.check_solved_rules():
-                input_src += render(rule) + '\n'
-        input_path = Path(p.parent, p.stem + '.level{}.hex'.format(level))
-        if debug:
-            with open(str(input_path), 'w') as input_file:
-                input_file.write(input_src)
+                level_src += render(rule) + '\n'
+        level_path = options.level_out.with_suffix('.{}.hex'.format(level))
+        if options.debug:
+            with level_path.open('w') as level_file:
+                level_file.write(level_src)
         src = '\n'.join([
-            input_src,
+            level_src,
             guess_src,
             program_src,
         ])
-        if debug:
+        if options.debug:
             print('Results at level {}:'.format(level))
             results = dlvhex(
-                str(input_path),
-                str(guess_path),
-                str(program_path),
+                str(level_path),
+                str(options.guess_out),
+                str(options.program_out),
                 pfilter=pfilter,
             )
         else:
@@ -206,15 +201,15 @@ def solve(file_name, debug=False, max_level=None):
                 wv.append(ans)
             if first_wv is None:
                 first_wv = guess
-                if not debug:
+                if not options.debug:
                     print(
                         'World view 1@{} wrt {}:'.
                         format(level, as_render(guess))
                     )
-            if guess == first_wv and not debug:
+            if guess == first_wv and not options.debug:
                 print(as_render(ans))
 
-        if not debug:
+        if not options.debug:
             for i, wv in enumerate(
                 wv for wv in world_views if wv is not first_wv
             ):
@@ -233,7 +228,7 @@ def solve(file_name, debug=False, max_level=None):
                     inject.fact(inject.atom(symbol, (i, term)))
                 ) + '\n'
 
-        if debug:
+        if options.debug:
             if world_views:
                 print(
                     'Found {} world view(s) at level {}.'.
@@ -242,7 +237,7 @@ def solve(file_name, debug=False, max_level=None):
             else:
                 print('No world view at level {}.'.format(level))
         if level == 0 and world_views:
-            if max_level > 0 and debug:
+            if max_level > 0 and options.debug:
                 print(
                     'Solved at level 0, skipping {}.'.format(
                         'level 1'

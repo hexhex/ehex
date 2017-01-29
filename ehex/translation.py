@@ -101,8 +101,9 @@ class RewriteStrongNegationWalker(TransformationWalker):
                 terms = ['X', 'Y', 'Z'][:arity]
             else:
                 terms = ['V{}'.format(i + 1) for i in range(arity)]
-            positive = inject.atom(symbol, terms)
-            negated = inject.sn_atom(symbol, terms)
+            vars_ = [inject.variable(x) for x in terms]
+            positive = inject.atom(symbol, vars_)
+            negated = inject.sn_atom(symbol, vars_)
             yield inject.constraint([positive, negated])
 
 

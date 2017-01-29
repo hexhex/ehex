@@ -277,8 +277,6 @@ def check_solved_rules():
 
 def guess_rules(modals):
 
-    yield from input_rules()
-
     for modal in modals:
         if not any(Variables(modal)):
             yield fact(
@@ -355,6 +353,7 @@ def envelope_rules(envelope, domain):
 
 
 def guess_and_check_rules(modals, envelope, domain):
+    yield from input_rules()
     yield from guess_rules(modals)
     yield from check_rules(modals)
     yield from envelope_rules(envelope, domain)
