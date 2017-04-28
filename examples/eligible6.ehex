@@ -9,3 +9,5 @@ student("Mike").
 student("Sandra").
 student("Elisa").
 student("Berthold").
+student("Irmgard").
+student("Dilma").

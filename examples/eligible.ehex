@@ -1,6 +1,6 @@
 eligible(X) :- highGPA(X).
 eligible(X) :- minority(X), fairGPA(X).
--eligible(X) :- lowGPA(X).
+-eligible(X) :- -fairGPA(X), -highGPA(X).
 interview(X) :- not K eligible(X), not K -eligible(X), student(X).
 
 fairGPA(X) v highGPA(X) :- student(X).
