@@ -1,6 +1,6 @@
-% Yale Shooting Problem #3
+% Yale Shooting Problem #1
 
-horizon(3).
+horizon(1).
 step(S) ← #int(S), S <= N, horizon(N).
 action_step(S) ← step(S), S < N, horizon(N).
 isnext(T, S) ← T = S + 1, action_step(S).
@@ -51,6 +51,7 @@ holds(F, 0) v ¬holds(F, 0) ← fluent(F).
 % Initial condition
 
 holds(alive, 0).
+holds(loaded, 0).
 ¬holds(is_impossible, 0).
 
 

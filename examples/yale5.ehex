@@ -1,22 +1,47 @@
-% Yale Shooting Problem #3
+% Yale Shooting Problem #1
 
-horizon(3).
+horizon(5).
 step(S) ← #int(S), S <= N, horizon(N).
 action_step(S) ← step(S), S < N, horizon(N).
 isnext(T, S) ← T = S + 1, action_step(S).
 
+fluent(aimed).
 fluent(alive).
 fluent(loaded).
+fluent(wounded).
 fluent(is_impossible).
+action(aim).
 action(load).
 action(pull_trigger).
 
 
 % Translated domain description
 
+holds(aimed, T) ←
+    occurs(aim, S),
+    isnext(T, S).
+
+¬holds(aimed, T) ←
+    occurs(load, S),
+    isnext(T, S).
+
+¬holds(aimed, T) ←
+    occurs(pull_trigger, S),
+    isnext(T, S).
+
+holds(wounded, T) ←
+    occurs(pull_trigger, S),
+    holds(loaded, S),
+    ¬holds(wounded, S),
+    holds(alive, S),
+    holds(aimed, S),
+    isnext(T, S).
+
 ¬holds(alive, T) ←
     occurs(pull_trigger, S),
     holds(loaded, S),
+    holds(wounded, S),
+    holds(aimed, S),
     isnext(T, S).
 
 ¬holds(loaded, T) ←
@@ -51,6 +76,8 @@ holds(F, 0) v ¬holds(F, 0) ← fluent(F).
 % Initial condition
 
 holds(alive, 0).
+¬holds(wounded, 0).
+holds(loaded, 0).
 ¬holds(is_impossible, 0).
 
 
