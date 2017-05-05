@@ -5,6 +5,7 @@ import collections
 
 from grako.model import NodeWalker
 from ehex.codegen import EHEXCodeGenerator as CodeGenerator
+from ehex.utils import is_iterable
 
 
 render = CodeGenerator().render
@@ -21,8 +22,7 @@ class NodeFilter(NodeWalker):
         iterable = super(NodeFilter, self).walk(node)
         if iterable is not None:
             return iterable
-        if (isinstance(node, collections.Iterable)
-                and not isinstance(node, str)):
+        if is_iterable(node):
             return self.walk_iterable(node)
         return iter([])
 
@@ -79,5 +79,27 @@ class StrongNegations(NodeFilter):
         yield node
 
 
-class ExtendedLiterals(DefaultNegations, Modals, StrongNegations, Atoms):
+class ChoiceElements(NodeFilter):
+
+    @staticmethod
+    def walk_ChoiceElement(node, *_, **__):
+        yield node
+
+
+class ClassicalLiterals(Atoms, StrongNegations):
     pass
+
+
+class ExtendedLiterals(DefaultNegations, Modals, ClassicalLiterals):
+    pass
+
+
+class Rules(NodeFilter):
+
+    @staticmethod
+    def walk_Rule(node, *_, **__):
+        yield node
+
+    @staticmethod
+    def walk_Constraint(node, *_, **__):
+        yield node

@@ -13,7 +13,8 @@ def solve(*args, text='', pfilter=None):
     if text:
         cmd.append('--')
     if args:
-        print(' '.join(cmd))
+        print('{} {} \\\n  '.format(*cmd[:2]) +
+              ' \\\n  '.join(cmd[2:]))
     proc = Popen(
         cmd,
         stdin=PIPE,

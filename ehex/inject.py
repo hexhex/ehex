@@ -2,6 +2,7 @@
 
 from ehex.parser import model
 from ehex.filter import (Variables, Terms)
+from ehex import utils
 from ehex import (
     AUX_MARKER,
     SNEG_PREFIX,
@@ -13,6 +14,8 @@ from ehex import (
     INPUT_ATOM,
     PATH_ATOM,
     EPISTEMIC_NEGATION,
+    DOMAIN,
+    ENVELOPE,
 )
 
 
@@ -23,60 +26,55 @@ def remove_prefix(name, prefix):
 
 
 def aux_name(symbol, prefix=''):
-    prefix += '_' if prefix else ''
+    if prefix:
+        prefix += '_'
     return '{}{}{}'.format(
         AUX_MARKER, prefix.upper(), remove_prefix(symbol, AUX_MARKER)
     )
 
 
 def atom(symbol, terms=None):
+    terms = list(utils.flatten(terms))
     return model.Atom(symbol=symbol, arguments=terms)
 
 
-def sn_atom(symbol, terms=None):
-    return atom(aux_name(symbol, SNEG_PREFIX), terms)
+def aux_atom(symbol, terms=None, prefix=''):
+    aux_symbol = aux_name(symbol, prefix=prefix)
+    return atom(aux_symbol, terms)
 
 
-def not_atom(symbol, terms=None):
-    return atom(aux_name(symbol, DNEG_PREFIX), terms)
+def prefixed_atom(prefix):
+    def partial(symbol, terms=None):
+        return aux_atom(symbol, terms=terms, prefix=prefix)
+
+    return partial
 
 
-def not_k_atom(symbol, terms=None):
-    return atom(aux_name(symbol, K_PREFIX), terms)
+def named_atom(symbol):
+    def partial(*terms):
+        return aux_atom(symbol, terms=terms)
+
+    return partial
 
 
-def m_atom(symbol, terms=None):
-    return atom(aux_name(symbol, M_PREFIX), terms)
-
-
-def program(statements=None):
-    return model.Program(statements=statements or [])
-
-
-def eneg_atom(terms):
-    symbol = aux_name(EPISTEMIC_NEGATION)
-    return atom(symbol, terms)
+sn_atom = prefixed_atom(SNEG_PREFIX)
+not_atom = prefixed_atom(DNEG_PREFIX)
+not_k_atom = prefixed_atom(K_PREFIX)
+m_atom = prefixed_atom(M_PREFIX)
+eneg_atom = named_atom(EPISTEMIC_NEGATION)
+domain_atom = named_atom(DOMAIN)
+in_atom = named_atom(IN_ATOM)
+out_atom = named_atom(OUT_ATOM)
 
 
 def envelope_atom(literal):
     function = functional_term(literal.symbol, literal.arguments)
-    symbol = aux_name('ENVELOPE')  # TODO: use symbol
+    symbol = aux_name(ENVELOPE)
     return atom(symbol, function)
 
 
-def domain_atom(term):
-    symbol = aux_name('DOMAIN')
-    return atom(symbol, term)
-
-
-def in_atom(terms):
-    symbol = aux_name(IN_ATOM)
-    return atom(symbol, terms)
-
-
-def out_atom(terms):
-    symbol = aux_name(OUT_ATOM)
-    return atom(symbol, terms)
+def program(statements=None):
+    return model.Program(statements=statements or [])
 
 
 def variable(symbol):
@@ -173,8 +171,9 @@ def k_constraints(modal):
     )
     yield constraint(
         domain_atoms + [
-            out_atom(term), path_atom(),
-            not_(cautious_inspection(symbol, terms))
+            out_atom(term),
+            path_atom(),
+            not_(cautious_inspection(symbol, terms)),
         ]
     )
 
@@ -186,8 +185,7 @@ def m_constraints(modal):
     if any(Variables(modal.literal)):
         domain_atoms = [
             atom(
-                aux_name(modal.literal.symbol, 'DOMAIN'),
-                modal.literal.arguments
+                aux_name(modal.literal.symbol, DOMAIN), modal.literal.arguments
             )
         ]
     else:
@@ -235,10 +233,8 @@ def input_rules():
     input_name = aux_name(INPUT_ATOM)
     in_name = aux_name(IN_ATOM)
     out_name = aux_name(OUT_ATOM)
-    rules = (
-        (atom(input_name, [in_name, 1, 'X']), in_atom('X')),
-        (atom(input_name, [out_name, 1, 'X']), out_atom('X')),
-    )
+    rules = ((atom(input_name, [in_name, 1, 'X']), in_atom('X')),
+             (atom(input_name, [out_name, 1, 'X']), out_atom('X')), )
     yield from (rule(head, body) for head, body in rules)
 
 
@@ -289,7 +285,7 @@ def guess_rules(modals):
 
         domain_vars = ['X{}'.format(i) for i, _ in enumerate(Terms(modal))]
         yield rule(
-            atom(aux_name(modal.literal.symbol, 'DOMAIN'), domain_vars),
+            atom(aux_name(modal.literal.symbol, DOMAIN), domain_vars),
             envelope_atom(atom(modal.literal.symbol, domain_vars)),
         )
         yield rule(
@@ -300,20 +296,10 @@ def guess_rules(modals):
             envelope_atom(modal.literal)  # XXX: why XXX?
         )
         if modal.op == 'K':
-            # TODO: review, we could also use an in-guess, but that would
-            # induce a &hexCautious check.
-            input_name = aux_name(INPUT_ATOM)
-            in_name = aux_name(IN_ATOM)
             guessing_rules = (
-                (modal_to_literal(modal), (
+                (in_atom(modal_to_literal(modal)), (
                     domain_atom(modal.literal.arguments),
                     not_(envelope_atom(modal.literal)),
-                )),
-                (atom(input_name, [in_name, 1, 'Z']), (
-                    modal_to_literal(modal),
-                    model.BinaryRelation(
-                        op="=", left='Z', right=guess_term(modal)
-                    ),
                 )),
             )  # yapf: disable
             yield from (rule(head, body) for head, body in guessing_rules)
@@ -345,10 +331,10 @@ def envelope_rules(envelope, domain):
             literal.symbol,
             literal.arguments,
         )
-        name = aux_name('ENVELOPE')
+        name = aux_name(ENVELOPE)
         yield fact(atom(name, function))
     for term in domain:
-        name = aux_name('DOMAIN')
+        name = aux_name(DOMAIN)
         yield fact(atom(name, term))
 
 

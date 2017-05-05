@@ -31,6 +31,7 @@ from ehex.parser import model
 from ehex.parser.model import EHEXModelBuilderSemantics as EHEXSemantics
 from ehex.parser.ehex import EHEXParser
 from ehex import SNEG_PREFIX
+from ehex.utils import is_iterable
 
 
 class TransformationWalker(NodeWalker):
@@ -48,11 +49,12 @@ class TransformationWalker(NodeWalker):
         attrs.update(kwargs)
         return type(node)(ast=ast, **attrs)
 
-    @staticmethod
-    def walk_object(node):
+    def walk_object(self, node):
+        if is_iterable(node):
+            return self.walk_iterable(node)
         return copy(node)
 
-    def walk_list(self, node):
+    def walk_iterable(self, node):
         walked_list = []
         for child in node:
             walked = self.walk(child)
@@ -206,3 +208,21 @@ class TranslationWalker(TransformationWalker):
         if isinstance(node.literal, model.Conjunction):
             return node.literal.literals[0].literal
         return node
+
+
+class RenameAtomsWalker(TransformationWalker):
+    """Rename all atoms in a program"""
+
+    def __init__(self, rename_function=None):
+        self.rename = rename_function or self._rename
+
+    @staticmethod
+    def _rename(old):
+        return '{}_'.format(old)
+
+    @postwalk
+    def walk_Atom(self, node):  # pylint: disable=no-self-use
+        if node.symbol.startswith('#'):
+            return node
+        new_symbol = self.rename(node.symbol)
+        return self.clone(node, symbol=new_symbol)
