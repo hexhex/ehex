@@ -293,25 +293,20 @@ def guess_rules(modals):
                 in_atom(modal_to_literal(modal)),
                 out_atom(modal_to_literal(modal))
             ]),
-            envelope_atom(modal.literal)  # XXX: why XXX?
+            envelope_atom(modal.literal)
         )
+        domain_atoms = [domain_atom(term) for term in Variables(modal)]
         if modal.op == 'K':
-            guessing_rules = (
-                (in_atom(modal_to_literal(modal)), (
-                    domain_atom(modal.literal.arguments),
-                    not_(envelope_atom(modal.literal)),
-                )),
-            )  # yapf: disable
-            yield from (rule(head, body) for head, body in guessing_rules)
+            yield rule(
+                in_atom(modal_to_literal(modal)),
+                domain_atoms + [not_(envelope_atom(modal.literal))],
+            )
+        # The following rule is implied by the rule above
         elif modal.op == 'M':
-            pass
-            # TODO: review, we don't need this rule, right?
-            # yield rule(
-            #     out_atom(modal_to_literal(modal)), [
-            #         domain_atom(modal.literal.arguments),
-            #         not_(envelope_atom(modal.literal))
-            #     ]
-            # )
+            yield rule(
+                out_atom(modal_to_literal(modal)),
+                domain_atoms + [not_(envelope_atom(modal.literal))]
+            )
 
 
 def check_rules(modals):
