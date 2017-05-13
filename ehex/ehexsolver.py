@@ -17,9 +17,8 @@ from ehex.translation import (
     OverApproximationWalker,
 )
 from ehex.filter import (
-    Variables,
     Modals,
-    Terms,
+    ExtendedModals,
 )
 import ehex.answerset as answerset
 
@@ -47,28 +46,18 @@ def get_envelope(program, options):
     else:
         results = dlvhex(text=envelope_src)
     parse = answerset.parse
-    envelope = list(next(parse(results)))
-    terms = set(render(term) for term in Terms(envelope))
+    envelope = set(next(parse(results)))
+    modal_domains = {
+        literal
+        for literal in envelope
+        if getattr(literal, 'symbol', '').startswith('aux__DOM')
+    }
+    envelope -= modal_domains
     if options.debug:
         as_render = answerset.render_answer_set
         print('Envelope:', as_render(envelope))
-        print('Terms:', as_render(terms))
-    return envelope, terms
-
-
-def compute_max_level(modals, domain, options):
-    cmax_level = sum(  # TODO: not optimal
-        len(domain)**sum(1 for var in Variables(m))
-        for m in modals
-    )
-    if options.debug:
-        print('Computed maximum level is {}.'.format(cmax_level))
-    max_level = options.max_level
-    if max_level is None:
-        max_level = cmax_level
-    else:
-        max_level = min(max_level, cmax_level)
-    return max_level
+        print('Modal domains:', as_render(modal_domains))
+    return envelope, modal_domains
 
 
 def get_filter_predicates(envelope, modals):
@@ -77,29 +66,19 @@ def get_filter_predicates(envelope, modals):
         if isinstance(literal, StrongNegation)
         else literal.symbol
         for literal in envelope
-    } | {
-        inject.aux_name(
-            modal.literal.symbol,
-            {
-                KModal: ehex.K_PREFIX,
-                MModal: ehex.M_PREFIX
-            }[type(modal)]
-        )
-        for modal in modals
-    }
+    } | {inject.aux_name(ehex.IN_ATOM)}
     if not predicates:
         predicates = {'none'}
     return predicates
 
 
 def partition_literals(literals):
-    literal_types = (Atom, StrongNegation)
-    epistemic_guess = frozenset(literals)
-    answer_set = set(
-        literal for literal in epistemic_guess
-        if isinstance(literal, literal_types)
+    answer_set = frozenset(literals)
+    epistemic_guess = frozenset(
+        literal for literal in answer_set
+        if getattr(literal, 'symbol', '').startswith('aux__IN')
     )
-    epistemic_guess -= answer_set
+    answer_set -= epistemic_guess
     return epistemic_guess, answer_set
 
 
@@ -111,33 +90,14 @@ def program_rules(program, modals):
 
 def solve(options):
     program = parse_program(options.src)
-    envelope, domain = get_envelope(program, options)
+    envelope, modal_domains = get_envelope(program, options)
+    emodals = ExtendedModals(program)
     modals = Modals(program)
-    max_level = compute_max_level(modals, domain, options)
-
-    modal_predicates = {
-        (modal.literal.symbol, len(modal.literal.arguments or ()))
-        for modal in modals
-    }
+    max_level = options.max_level or len(envelope)
+    max_level = min(len(envelope), max_level)
     pfilter = get_filter_predicates(envelope, modals)
-
-    envelope = [  # TODO: review, seems not optimal
-        literal for literal in envelope
-        if isinstance(literal, Atom)
-        and len(literal.arguments or ()) > 0
-        and (literal.symbol, len(literal.arguments or ()))
-        in modal_predicates
-    ] + [
-        literal for literal in envelope
-        if isinstance(literal, StrongNegation)  # TODO: transform envelope?
-        and len(literal.atom.arguments or ()) > 0
-        and (inject.aux_name(literal.atom.symbol, ehex.SNEG_PREFIX),
-             len(literal.atom.arguments or []))
-        in modal_predicates
-    ]
-
     gc_program = inject.program(
-        inject.guess_and_check_rules(modals, envelope, domain)
+        inject.guess_and_check_rules(emodals, modal_domains)
     )
     program_src = (render(inject.program(program_rules(program, modals))))
     with options.program_out.open('w') as program_file:
@@ -222,7 +182,7 @@ def solve(options):
 
         for i, wv in enumerate(world_views):
             for literal in list(wv):
-                term = answerset.unparse_literal(literal)
+                term = literal.arguments[0]
                 symbol = inject.aux_name('SOLVED')
                 solved_src += render(
                     inject.fact(inject.atom(symbol, (i, term)))

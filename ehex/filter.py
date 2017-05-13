@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import collections
-
 from grako.model import NodeWalker
 from ehex.codegen import EHEXCodeGenerator as CodeGenerator
 from ehex.utils import is_iterable
@@ -42,6 +40,18 @@ class Modals(NodeFilter):
     @staticmethod
     def walk_Modal(node):
         yield node
+
+
+class ExtendedModals(Modals):
+
+    @staticmethod
+    def walk_Modal(node):
+        yield node
+
+    def walk_DefaultNegation(self, node):
+        modal = self.walk(node.literal)
+        if any(modal):
+            yield node
 
 
 class Variables(NodeFilter):

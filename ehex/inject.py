@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from ehex.parser import model
-from ehex.filter import (Variables, Terms)
+from ehex.filter import Terms
 from ehex import utils
 from ehex import (
     AUX_MARKER,
@@ -15,7 +15,6 @@ from ehex import (
     PATH_ATOM,
     EPISTEMIC_NEGATION,
     DOMAIN,
-    ENVELOPE,
 )
 
 
@@ -67,10 +66,8 @@ in_atom = named_atom(IN_ATOM)
 out_atom = named_atom(OUT_ATOM)
 
 
-def envelope_atom(literal):
-    function = functional_term(literal.symbol, literal.arguments)
-    symbol = aux_name(ENVELOPE)
-    return atom(symbol, function)
+def modal_domain_atom(op, symbol, terms):
+    return atom('{}_{}_{}'.format(aux_name(DOMAIN), op, symbol), terms)
 
 
 def program(statements=None):
@@ -129,10 +126,15 @@ def not_(literal):
     return model.DefaultNegation(literal=literal)
 
 
-def modal_to_literal(modal):
-    if modal.op == 'K':
+def modal_to_literal(modal, switch_mode=False):
+    if isinstance(modal, model.DefaultNegation):
+        modal = modal.literal
+    op = modal.op
+    if switch_mode:
+        op = {'K': 'M', 'M': 'K'}[op]
+    if op == 'K':
         return not_k_literal(modal.literal)
-    elif modal.op == 'M':
+    elif op == 'M':
         return m_literal(modal.literal)
     assert False
 
@@ -160,63 +162,38 @@ def path_atom():
 def k_constraints(modal):
     term = guess_term(modal)
     symbol = modal.literal.symbol
-    terms = modal.literal.arguments
-    domain_atoms = [domain_atom(term) for term in Variables(modal)]
-    yield constraint(
-        domain_atoms + [
-            in_atom(term),
-            path_atom(),
-            cautious_inspection(symbol, terms),
-        ]
-    )
-    yield constraint(
-        domain_atoms + [
-            out_atom(term),
+    terms = [term for term in Terms(modal)]
+    datom = modal_domain_atom('k', symbol, terms)
+    not_cautious = not_atom('cautious_' + symbol, terms)
+    yield rule(
+        not_cautious, [
+            datom,
             path_atom(),
             not_(cautious_inspection(symbol, terms)),
         ]
     )
+    yield rule(not_cautious, [datom, not_(modal.literal)])
+    yield constraint([datom, in_atom(term), not_(not_cautious)])
+    yield constraint([datom, out_atom(term), not_cautious])
 
 
 def m_constraints(modal):
     term = guess_term(modal)
     symbol = modal.literal.symbol
     terms = [term for term in Terms(modal)]
-    if any(Variables(modal.literal)):
-        domain_atoms = [
-            atom(
-                aux_name(modal.literal.symbol, DOMAIN), modal.literal.arguments
-            )
+    datom = modal_domain_atom('m', symbol, terms)
+    brave = aux_atom('brave_' + symbol, terms)
+    yield rule(
+        brave,
+        [
+            datom,
+            path_atom(),
+            brave_inspection(symbol, terms)
         ]
-    else:
-        domain_atoms = []
-    variables = [
-        aux_variable('x{}'.format(i)) for i, term in enumerate(terms)
-        if not isinstance(term, model.VariableTerm)
-    ]
-    assignments = [
-        model.BinaryRelation(op="=", left=x, right=terms[i])
-        for i, x in enumerate(variables)
-    ]
-    var_iter = iter(variables)
-    terms = [
-        next(var_iter) if not isinstance(term, model.VariableTerm) else term
-        for term in terms
-    ]
-    yield constraint(
-        domain_atoms + [
-            in_atom(term),
-            path_atom(),
-            not_(brave_inspection(symbol, terms)),
-        ] + assignments
     )
-    yield constraint(
-        domain_atoms + [
-            out_atom(term),
-            path_atom(),
-            brave_inspection(symbol, terms),
-        ] + assignments
-    )
+    yield rule(brave, [datom, modal.literal])
+    yield constraint([datom, in_atom(term), not_(brave)])
+    yield constraint([datom, out_atom(term), brave])
 
 
 def functional_term(symbol, terms=None):
@@ -272,72 +249,62 @@ def check_solved_rules():
 
 
 def guess_rules(modals):
-
     for modal in modals:
-        if not any(Variables(modal)):
-            yield fact(
-                disjunction([
-                    in_atom(modal_to_literal(modal)),
-                    out_atom(modal_to_literal(modal))
-                ])
-            )
-            continue
-
-        domain_vars = ['X{}'.format(i) for i, _ in enumerate(Terms(modal))]
-        yield rule(
-            atom(aux_name(modal.literal.symbol, DOMAIN), domain_vars),
-            envelope_atom(atom(modal.literal.symbol, domain_vars)),
+        if isinstance(modal, model.DefaultNegation):
+            modal = modal.literal
+        op = modal.op.lower()
+        not_l = not_atom(modal.literal.symbol, modal.literal.arguments)
+        condition = {
+            'K': not_(modal.literal),
+            'M': not_(not_l),
+        }
+        datom = modal_domain_atom(
+            op, modal.literal.symbol, modal.literal.arguments
         )
         yield rule(
             disjunction([
                 in_atom(modal_to_literal(modal)),
                 out_atom(modal_to_literal(modal))
-            ]),
-            envelope_atom(modal.literal)
+            ]), [datom]
         )
-        domain_atoms = [domain_atom(term) for term in Variables(modal)]
-        if modal.op == 'K':
-            yield rule(
-                in_atom(modal_to_literal(modal)),
-                domain_atoms + [not_(envelope_atom(modal.literal))],
-            )
-        # The following rule is implied by the rule above
-        elif modal.op == 'M':
-            yield rule(
-                out_atom(modal_to_literal(modal)),
-                domain_atoms + [not_(envelope_atom(modal.literal))]
-            )
+        yield rule(
+            in_atom(modal_to_literal(modal)), [datom, condition[modal.op]]
+        )
+        yield rule(
+            in_atom(modal_to_literal(modal)),
+            [datom, out_atom(modal_to_literal(modal, switch_mode=True))]
+        )
 
 
 def check_rules(modals):
-    constraints = {'K': k_constraints, 'M': m_constraints}
+    constraints = {
+        'K': k_constraints,
+        'M': m_constraints,
+    }
     for modal in modals:
+        if isinstance(modal, model.DefaultNegation):
+            modal = modal.literal
         yield from constraints[modal.op](modal)
 
 
-def envelope_rules(envelope, domain):
-    for literal in envelope:
-        if isinstance(literal, model.StrongNegation):
-            literal = sn_atom(
-                literal.atom.symbol,
-                literal.atom.arguments,
-            )
-        function = functional_term(
-            literal.symbol,
-            literal.arguments,
-        )
-        name = aux_name(ENVELOPE)
-        yield fact(atom(name, function))
-    for term in domain:
-        name = aux_name(DOMAIN)
-        yield fact(atom(name, term))
+def domain_facts(modal_domains):
+    for literal in modal_domains:
+        op = literal.arguments[0].ast
+        arg = literal.arguments[1]
+        if isinstance(arg, model.ConstantTerm):
+            symbol = arg.ast
+            terms = []
+        else:
+            symbol = arg.symbol
+            terms = arg.arguments
+        yield fact(modal_domain_atom(op, symbol, terms))
 
 
-def guess_and_check_rules(modals, envelope, domain):
+def guess_and_check_rules(modals, modal_domains):
     yield from input_rules()
     yield from guess_rules(modals)
     yield from check_rules(modals)
-    yield from envelope_rules(envelope, domain)
+    yield from domain_facts(modal_domains)
 
 
 def guess_assignment_rules(modals):

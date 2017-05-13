@@ -27,9 +27,8 @@ from functools import wraps
 from grako.model import NodeWalker
 
 from ehex import inject
+from ehex.filter import ExtendedModals
 from ehex.parser import model
-from ehex.parser.model import EHEXModelBuilderSemantics as EHEXSemantics
-from ehex.parser.ehex import EHEXParser
 from ehex import SNEG_PREFIX
 from ehex.utils import is_iterable
 
@@ -114,8 +113,10 @@ class OverApproximationWalker(TransformationWalker):
     def __init__(self):
         self._new_rules = []
 
-    @staticmethod
-    def walk_Constraint(*_):
+    def walk_Constraint(self, node, *_):
+        literals = ExtendedModals(node)
+        node = self.walk_Node(node)
+        self._add_domain(literals, node)
         return None
 
     @staticmethod
@@ -158,8 +159,25 @@ class OverApproximationWalker(TransformationWalker):
             return None
         return node
 
-    @postwalk
+    def _add_domain(self, literals, node):
+        for literal in literals:
+            if isinstance(literal, model.DefaultNegation):
+                modal = literal.literal
+            else:
+                modal = literal
+            op = modal.op
+            self._new_rules.append(
+                inject.rule(
+                    inject.domain_atom(op.lower(), modal.literal),
+                    node.body
+                )
+            )
+
     def walk_Rule(self, node, *_):
+        literals = ExtendedModals(node)
+        node = self.walk_Node(node)
+        self._add_domain(literals, node)
+
         head = node.head
         if isinstance(head, model.Disjunction):
             for literal in head.literals:
@@ -167,6 +185,7 @@ class OverApproximationWalker(TransformationWalker):
                     inject.rule(literal, node.body)
                 )
             return None
+
         elif isinstance(head, model.ChoiceRelation):
             for element in head.choices:
                 self._new_rules.append(
