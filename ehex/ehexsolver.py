@@ -93,8 +93,8 @@ def solve(options):
     envelope, modal_domains = get_envelope(program, options)
     emodals = ExtendedModals(program)
     modals = Modals(program)
-    max_level = options.max_level or len(envelope)
-    max_level = min(len(envelope), max_level)
+    max_level = options.max_level or len(modal_domains)
+    max_level = min(len(modal_domains), max_level)
     pfilter = get_filter_predicates(envelope, modals)
     gc_program = inject.program(
         inject.guess_and_check_rules(emodals, modal_domains)

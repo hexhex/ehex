@@ -185,7 +185,6 @@ class OverApproximationWalker(TransformationWalker):
                     inject.rule(literal, node.body)
                 )
             return None
-
         elif isinstance(head, model.ChoiceRelation):
             for element in head.choices:
                 self._new_rules.append(
