@@ -1,9 +1,7 @@
-eligible(X) :- highGPA(X).
-eligible(X) :- minority(X), fairGPA(X).
--eligible(X) :- -fairGPA(X), -highGPA(X).
+eligible(X) :- highGPA(X), student(X).
+eligible(X) :- minority(X), fairGPA(X), student(X).
+-eligible(X) :- -fairGPA(X), -highGPA(X), student(X).
 interview(X) :- not K eligible(X), not K -eligible(X), student(X).
-
-fairGPA(X) v highGPA(X) :- student(X).
 
 student("Mike").
 student("Sandra").
@@ -19,3 +17,40 @@ student("Sascha").
 student("Erika").
 student("Marta").
 student("Erwin").
+
+fairGPA("Mike") | highGPA("Mike").
+minority("Mike").
+
+fairGPA("Sandra") | highGPA("Sandra").
+
+highGPA("Elisa").
+
+fairGPA("Berthold").
+minority("Berthold").
+
+fairGPA("Irmgard").
+
+minority("Dilma") | highGPA("Dilma").
+
+fairGPA("Charlie") | highGPA("Charlie").
+minority("Charlie").
+
+highGPA("Augustin").
+
+-highGPA("Rudolf").
+-fairGPA("Rudolf") | minority("Rudolf").
+
+-highGPA("Anika").
+-fairGPA("Anika").
+minority("Anika").
+
+fairGPA("Sascha") | highGPA("Sascha").
+minority("Sascha").
+
+fairGPA("Erika").
+minority("Erika").
+
+highGPA("Marta").
+
+fairGPA("Erwin").
+-minority("Erwin").
