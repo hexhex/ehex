@@ -2,7 +2,14 @@
 
 import argparse
 import pathlib
+import signal
+import sys
 from ehex.ehexsolver import solve
+
+
+def sigterm_handler(sig, *_):
+    print("Solver terminated by signal {}".format(sig), file=sys.stderr)
+    sys.exit(1)
 
 
 def main():
@@ -30,4 +37,5 @@ def main():
 
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGTERM, sigterm_handler)
     main()
