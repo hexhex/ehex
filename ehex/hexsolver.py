@@ -1,3 +1,4 @@
+import sys
 from subprocess import (
     Popen,
     PIPE,
@@ -5,28 +6,54 @@ from subprocess import (
 )
 
 
-def solve(*args, text='', pfilter=None):
-    cmd = ['dlvhex2', '--silent']
-    if pfilter is not None:
-        cmd += ['--filter=' + ','.join(pfilter or [])]
-    cmd += args
+def solve(
+    *files, debug=False, print_errors=None, text='',
+    pfilter=None, **options
+):
+    if print_errors is None:
+        print_errors = bool(files)
+
+    options.update({
+        'silent': True,
+        'filter': ','.join(pfilter) if pfilter else None,
+    })
+
+    flags = {name for name, value in options.items() if value is True}
+
+    for key in flags:
+        del options[key]
+
+    options = {
+        key: value
+        for key, value in options.items()
+        if not (value is None or value is False)
+    }
+
+    cmd = ['dlvhex2']
+    cmd += ['--{}'.format(name.replace('_', '-')) for name in flags]
+    cmd += [
+        '--{}={}'.format(key.replace('_', '-'), value)
+        for key, value in options.items()
+    ]
+    cmd += files
     if text:
         cmd.append('--')
-    if args:
-        print('{} {} \\\n  '.format(*cmd[:2]) +
-              ' \\\n  '.join(cmd[2:]))
+    if debug:
+        print(
+            '{} {}'.format(cmd[0], ' \\\n  '.join(cmd[1:])),
+            file=sys.stderr
+        )
+
     proc = Popen(
         cmd,
         stdin=PIPE,
         stdout=PIPE,
-        stderr=None if args else DEVNULL,
+        stderr=None if print_errors else DEVNULL,
         universal_newlines=True,
     )
+
     with proc.stdin as stdin:
         stdin.write(text)
-        for name in args:
-            with open(name) as src:
-                text = src.read()
-                stdin.write(text)
+
     for line in proc.stdout:
         yield line
