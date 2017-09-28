@@ -24,3 +24,11 @@ def generator(func):
 def to_camel_case(name):
     words = name.split('_')
     return words[0].lower() + ''.join(word.capitalize() for word in words[1:])
+
+
+def last(iterator, *args):
+    """Return the last item from the iterator."""
+    value = next(iterator, *args)
+    for value in iterator:
+        pass
+    return value
