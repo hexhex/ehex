@@ -570,6 +570,8 @@ class EHEXParser(Parser):
     def _term_(self):
         with self._choice():
             with self._option():
+                self._interval_()
+            with self._option():
                 self._arith_expr_()
             with self._option():
                 self._basic_term_()
@@ -649,6 +651,25 @@ class EHEXParser(Parser):
             with self._option():
                 self._variable_()
             self._error('no available options')
+
+    @graken('Interval')
+    def _interval_(self):
+        with self._group():
+            with self._choice():
+                with self._option():
+                    self._arith_expr_()
+                with self._option():
+                    self._basic_term_()
+                self._error('no available options')
+        self.name_last_node('left')
+        self._token('..')
+        self._cut()
+        self._term_()
+        self.name_last_node('right')
+        self.ast._define(
+            ['left', 'right'],
+            []
+        )
 
     @graken('FunctionalTerm')
     def _functional_(self):
@@ -1088,6 +1109,9 @@ class EHEXSemantics(object):
         return ast
 
     def basic_term(self, ast):
+        return ast
+
+    def interval(self, ast):
         return ast
 
     def functional(self, ast):

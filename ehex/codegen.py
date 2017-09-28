@@ -216,3 +216,9 @@ class FunctionalTerm(ModelRenderer):
         if cautious_getattr(self.node, 'arguments', []):
             template += '({arguments::, :})'
         return template
+
+
+class Interval(ModelRenderer):
+
+    template = '{left}..{right}'
+

@@ -205,6 +205,7 @@ terms = (COMMA).{term}+ ;
 
 term
     =
+    | interval
     | arith_expr
     | basic_term
     ;
@@ -241,6 +242,12 @@ basic_term =
     | functional
     | constant
     | variable
+    ;
+
+
+interval::Interval
+    =
+    left:(arith_expr | basic_term) '..' ~ right:term
     ;
 
 

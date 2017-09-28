@@ -275,6 +275,18 @@ class MultiplicativeTerm(Term):
         super(MultiplicativeTerm, self).__init__(**_kwargs_)
 
 
+class Interval(ModelBase):
+    def __init__(self,
+                 left=None,
+                 right=None,
+                 **_kwargs_):
+        super(Interval, self).__init__(
+            left=left,
+            right=right,
+            **_kwargs_
+        )
+
+
 class FunctionalTerm(Term):
     def __init__(self,
                  arguments=None,
