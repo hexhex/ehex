@@ -5,7 +5,7 @@ from ehex.parser.model import EHEXModelBuilderSemantics
 from ehex.parser.answerset import HEXAnswerSetParser
 
 
-render = EHEXCodeGenerator().render
+render_model = EHEXCodeGenerator().render
 render_cache = {}
 
 _parse = HEXAnswerSetParser(
@@ -15,11 +15,11 @@ _parse = HEXAnswerSetParser(
 parse_cache = {}
 
 
-def get_nested_tokens(text):
+def tokenize_nested(text):
     """Adapted from  http://stackoverflow.com/a/14715850"""
     left = r'[(]'
     right = r'[)]'
-    sep = r'"(?:\\"|[^"])*"|[{,}]|\s+'
+    sep = r'"(?:\\"|[^"])*"|[{,.}]|\s+'
     pat = re.compile(r'({}|{}|{})'.format(left, right, sep))
     tokens = pat.split(text)
     left = re.compile(left).match
@@ -57,13 +57,6 @@ def flatten(tokens):
     return ''.join(tokens)[1:]
 
 
-def generate_tokens(stream):
-    for ans in stream:
-        if not ans.strip():
-            continue
-        yield get_nested_tokens(ans)
-
-
 def parse_literal(token):
     cached = parse_cache.get(token)
     if cached is not None:
@@ -78,39 +71,48 @@ def unparse_literal(literal):
     return parse_cache[literal]
 
 
-def generate_model(tokens):
-    it = iter(tokens)
-    predicate = next(it)
-    for token in it:
-        if isinstance(token, list):
-            parts = '{}({})'.format(predicate, flatten(token))
-            yield parse_literal(parts)
-            predicate = next(it)
-        else:
-            yield parse_literal(predicate)
-            predicate = token
-    yield parse_literal(predicate)
-
-
-def parse(stream):
-    for result in generate_tokens(stream):
-        yield generate_model(result)
-
-
 def render_literal(literal):
-    cached = render_cache.get(literal)
-    if cached is not None:
-        return cached
-    rendered = render(literal)
-    render_cache[literal] = rendered
-    return rendered
+    try:
+        return render_cache[literal]
+    except KeyError:
+        rendered = render_model(literal)
+        render_cache[literal] = rendered
+        return rendered
 
 
-def render_answer_set(answer_set):
+def render(answer_set):
     rendered = sorted(render_literal(lit) for lit in answer_set)
     return '{' + ', '.join(rendered) + '}'
 
 
+def generate_tokens(stream):
+    for ans in stream:
+        yield tokenize_nested(ans)
+
+
+def generate_literals(tokens):
+    it = iter(tokens)
+    predicate = next(it)
+    for token in it:
+        if isinstance(token, list):
+            yield flatten([predicate, token])
+            predicate = next(it)
+        else:
+            yield predicate
+            predicate = token
+    yield predicate
+
+
+def generate_model(literals):
+    for literal in literals:
+        yield parse_literal(literal)
+
+
+def parse(stream):
+    for tokens in generate_tokens(stream):
+        yield generate_model(generate_literals(tokens))
+
+
 def render_result(stream):
     for parsed in parse(stream):
-        yield render_answer_set(parsed)
+        yield render(parsed)
