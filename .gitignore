@@ -1,2 +1,6 @@
 __pycache__
 examples/**/*.hex
+*.pyc
+*.out
+*.bak
+tmp

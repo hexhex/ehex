@@ -26,7 +26,7 @@ from functools import wraps
 
 from grako.model import NodeWalker
 
-from ehex import inject
+from ehex import fragments
 from ehex.filter import ExtendedModals
 from ehex.parser import model
 from ehex import SNEG_PREFIX
@@ -88,7 +88,7 @@ class RewriteStrongNegationWalker(TransformationWalker):
         atom = node.atom
         arity = len(atom.arguments or ())
         self._predicates.add((atom.symbol, arity))
-        symbol = inject.aux_name(atom.symbol, SNEG_PREFIX)
+        symbol = fragments.aux_name(atom.symbol, SNEG_PREFIX)
         return self.clone(atom, symbol=symbol)
 
     @postwalk
@@ -102,10 +102,10 @@ class RewriteStrongNegationWalker(TransformationWalker):
                 terms = ['X', 'Y', 'Z'][:arity]
             else:
                 terms = ['V{}'.format(i + 1) for i in range(arity)]
-            vars_ = [inject.variable(x) for x in terms]
-            positive = inject.atom(symbol, vars_)
-            negated = inject.sn_atom(symbol, vars_)
-            yield inject.constraint([positive, negated])
+            vars_ = [fragments.variable(x) for x in terms]
+            positive = fragments.atom(symbol, vars_)
+            negated = fragments.sn_atom(symbol, vars_)
+            yield fragments.constraint([positive, negated])
 
 
 class OverApproximationWalker(TransformationWalker):
@@ -167,8 +167,8 @@ class OverApproximationWalker(TransformationWalker):
                 modal = literal
             op = modal.op
             self._new_rules.append(
-                inject.rule(
-                    inject.domain_atom(op.lower(), modal.literal),
+                fragments.rule(
+                    fragments.domain_atom(op.lower(), modal.literal),
                     node.body
                 )
             )
@@ -182,13 +182,13 @@ class OverApproximationWalker(TransformationWalker):
         if isinstance(head, model.Disjunction):
             for literal in head.literals:
                 self._new_rules.append(
-                    inject.rule(literal, node.body)
+                    fragments.rule(literal, node.body)
                 )
             return None
         elif isinstance(head, model.ChoiceRelation):
             for element in head.choices:
                 self._new_rules.append(
-                    inject.rule(
+                    fragments.rule(
                         element.choice,
                         node.body.literals + element.literals.literals
                     )
@@ -211,15 +211,15 @@ class TranslationWalker(TransformationWalker):
 
     @postwalk
     def walk_KModal(self, node):  # pylint: disable=no-self-use
-        modal_literal = inject.not_k_literal(node.literal)
-        return inject.conjunction([
-            inject.not_(modal_literal),
+        modal_literal = fragments.not_k_literal(node.literal)
+        return fragments.conjunction([
+            fragments.not_(modal_literal),
             node.literal
         ])
 
     @postwalk
     def walk_MModal(self, node):  # pylint: disable=no-self-use
-        return inject.m_literal(node.literal)
+        return fragments.m_literal(node.literal)
 
     @postwalk
     def walk_DefaultNegation(self, node):  # pylint: disable=no-self-use

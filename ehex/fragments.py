@@ -15,6 +15,7 @@ from ehex import (
     PATH_ATOM,
     EPISTEMIC_NEGATION,
     DOMAIN,
+    SOLVED,
 )
 
 
@@ -71,7 +72,7 @@ def modal_domain_atom(op, symbol, terms):
 
 
 def program(statements=None):
-    return model.Program(statements=statements or [])
+    return model.Program(statements=list(statements or []))
 
 
 def variable(symbol):
@@ -115,15 +116,19 @@ def fact(literal):
 
 
 def disjunction(literals):
-    return model.Disjunction(literals=literals)
+    return model.Disjunction(literals=list(literals))
 
 
 def conjunction(literals):
-    return model.Conjunction(literals=literals)
+    return model.Conjunction(literals=list(literals))
 
 
 def not_(literal):
     return model.DefaultNegation(literal=literal)
+
+
+def neg(atom_):
+    return model.StrongNegation(atom=atom_)
 
 
 def modal_to_literal(modal, switch_mode=False):
@@ -183,14 +188,7 @@ def m_constraints(modal):
     terms = [term for term in Terms(modal)]
     datom = modal_domain_atom('m', symbol, terms)
     brave = aux_atom('brave_' + symbol, terms)
-    yield rule(
-        brave,
-        [
-            datom,
-            path_atom(),
-            brave_inspection(symbol, terms)
-        ]
-    )
+    yield rule(brave, [datom, path_atom(), brave_inspection(symbol, terms)])
     yield rule(brave, [datom, modal.literal])
     yield constraint([datom, in_atom(term), not_(brave)])
     yield constraint([datom, out_atom(term), brave])
@@ -210,8 +208,10 @@ def input_rules():
     input_name = aux_name(INPUT_ATOM)
     in_name = aux_name(IN_ATOM)
     out_name = aux_name(OUT_ATOM)
-    rules = ((atom(input_name, [in_name, 1, 'X']), in_atom('X')),
-             (atom(input_name, [out_name, 1, 'X']), out_atom('X')), )
+    rules = (
+        (atom(input_name, [in_name, 1, 'X']), in_atom('X')),
+        (atom(input_name, [out_name, 1, 'X']), out_atom('X')),
+    )
     yield from (rule(head, body) for head, body in rules)
 
 
@@ -231,11 +231,11 @@ def level_constraint(level):
 
 def check_solved_rules():
     def solved_atom(terms):
-        name = aux_name('SOLVED')
+        name = aux_name(SOLVED)
         return atom(name, terms)
 
     def not_solved_atom(terms):
-        name = aux_name('NOT_SOLVED')
+        name = aux_name(SOLVED, prefix=SNEG_PREFIX)
         return atom(name, terms)
 
     yield rule(
@@ -248,7 +248,8 @@ def check_solved_rules():
     yield constraint([not_(not_solved_atom('Z')), solved_atom(['Z', '_'])])
 
 
-def guess_rules(modals):
+def _guess_rules(modals):
+    yield constraint([in_atom('X'), out_atom('X')])
     for modal in modals:
         if isinstance(modal, model.DefaultNegation):
             modal = modal.literal
@@ -276,7 +277,7 @@ def guess_rules(modals):
         )
 
 
-def check_rules(modals):
+def _check_rules(modals):
     constraints = {
         'K': k_constraints,
         'M': m_constraints,
@@ -300,11 +301,15 @@ def domain_facts(modal_domains):
         yield fact(modal_domain_atom(op, symbol, terms))
 
 
-def guess_and_check_rules(modals, modal_domains):
-    yield from input_rules()
-    yield from guess_rules(modals)
-    yield from check_rules(modals)
+def guess_rules(modals, modal_domains):
+    yield from _guess_rules(modals)
     yield from domain_facts(modal_domains)
+
+
+def check_rules(modals, path):
+    yield fact(atom(aux_name(PATH_ATOM), '"{}"'.format(path)))
+    yield from input_rules()
+    yield from _check_rules(modals)
 
 
 def guess_assignment_rules(modals):

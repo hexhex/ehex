@@ -10,7 +10,7 @@ def solve(
     if print_errors is None:
         print_errors = bool(files)
     if quiet is None:
-        if options.get('enum-mode') in {'brave', 'cautious'}:
+        if options.get('enum_mode') in {'brave', 'cautious'}:
             quiet = 1
         else:
             quiet = 0

@@ -1,14 +1,16 @@
+import sys
 from ehex.hexsolver import solve as dlvhex
+from ehex.clingo import solve as clingo
 from ehex.codegen import EHEXCodeGenerator
 
 import ehex
-from ehex import inject
+from ehex import fragments
 from ehex.parser.model import (
     EHEXModelBuilderSemantics as Semantics,
-    Atom,
     StrongNegation,
-    KModal,
-    MModal,
+    ConstantTerm,
+    Modal,
+    DefaultNegation,
 )
 from ehex.parser.ehex import EHEXParser as Parser
 from ehex.translation import (
@@ -16,193 +18,413 @@ from ehex.translation import (
     TranslationWalker,
     OverApproximationWalker,
 )
-from ehex.filter import (
-    Modals,
-    ExtendedModals,
-)
+from ehex.filter import Modals
+
 import ehex.answerset as answerset
 
 render = EHEXCodeGenerator().render
 
 
-def parse_program(program_path):
-    parser = Parser(parseinfo=False)
-    with open(str(program_path)) as program_file:
-        text = program_file.read()
-    parsed = parser.parse(
-        text, 'program', filename=str(program_path), semantics=Semantics()
-    )
-    return RewriteStrongNegationWalker().walk(parsed)
+class Context:
 
+    def __init__(self, options):
+        self.fragments = {}
+        self.literals = {"consequences": {}}
+        self.src = src = {}
+        self.parse_input(options)
+        self.create_modal_literals()
+        self.compute_envelope(options)
+        self.create_guess()
+        self.create_check(options)
+        self.create_reduct()
+        self.create_filter_predicates()
+        self.create_ground_modals()
+        self.render_fragments(self.fragments)
+        if options.planning_mode:
+            self.append_src(
+                'guess_rules',
+                ':- aux__IN(aux__NOT_K_goal).',
+                ':- aux__OUT(aux__M_goal).',
+            )
+        self.set_src('lp_program', src['reduct_program'], src['guess_rules'])
+        self.set_src('gc_rules', src['guess_rules'], src['check_rules'])
+        self.set_src('solved_constraints')
+        self.create_show_k_src()
+        self.create_show_m_src()
+        self.min_level = 0
+        max_level = options.max_level or len(self.literals['modal_domains'])
+        self.max_level = min(len(self.literals['modal_domains']), max_level)
 
-def get_envelope(program, options):
-    oa_walker = OverApproximationWalker().walk
-    envelope_src = render(oa_walker(program))
-    if options.debug:
-        with options.envelope_out.open('w') as envelope_file:
-            envelope_file.write(envelope_src)
-        print('Computing positive envelope and terms:')
-        results = dlvhex(str(options.envelope_out))
-    else:
-        results = dlvhex(text=envelope_src)
-    parse = answerset.parse
-    envelope = set(next(parse(results)))
-    modal_domains = {
-        literal
-        for literal in envelope
-        if getattr(literal, 'symbol', '').startswith('aux__DOM')
-    }
-    envelope -= modal_domains
-    if options.debug:
-        as_render = answerset.render_answer_set
-        print('Envelope:', as_render(envelope))
-        print('Modal domains:', as_render(modal_domains))
-    return envelope, modal_domains
-
-
-def get_filter_predicates(envelope, modals):
-    predicates = {  # TODO: refactoring, use filter from command line
-        inject.aux_name(literal.atom.symbol, ehex.SNEG_PREFIX)
-        if isinstance(literal, StrongNegation)
-        else literal.symbol
-        for literal in envelope
-    } | {inject.aux_name(ehex.IN_ATOM)}
-    if not predicates:
-        predicates = {'none'}
-    return predicates
-
-
-def partition_literals(literals):
-    answer_set = frozenset(literals)
-    epistemic_guess = frozenset(
-        literal for literal in answer_set
-        if getattr(literal, 'symbol', '').startswith('aux__IN')
-    )
-    answer_set -= epistemic_guess
-    return epistemic_guess, answer_set
-
-
-def program_rules(program, modals):
-    t_program = TranslationWalker().walk(program)
-    yield from t_program.statements
-    yield from inject.guess_assignment_rules(modals)
-
-
-def solve(options):
-    program = parse_program(options.src)
-    envelope, modal_domains = get_envelope(program, options)
-    emodals = ExtendedModals(program)
-    modals = Modals(program)
-    max_level = options.max_level or len(modal_domains)
-    max_level = min(len(modal_domains), max_level)
-    pfilter = get_filter_predicates(envelope, modals)
-    gc_program = inject.program(
-        inject.guess_and_check_rules(emodals, modal_domains)
-    )
-    program_src = (render(inject.program(program_rules(program, modals))))
-    with options.program_out.open('w') as program_file:
-        # This file is mandatory for HEX inspection
-        program_file.write(program_src)
-    path_atom = inject.fact(
-        inject.atom(
-            inject.aux_name('PATH'),
-            '"{}"'.format(options.program_out),
+    @staticmethod
+    def _parse_program(program_path):
+        parser = Parser(parseinfo=False)
+        with open(str(program_path)) as program_file:
+            text = program_file.read()
+        parsed = parser.parse(
+            text, 'program', filename=str(program_path), semantics=Semantics()
         )
-    )
-    guess_src = (render(path_atom) + '\n\n' + render(gc_program))
-    if options.debug:
-        with options.guess_out.open('w') as guess_file:
-            guess_file.write(guess_src)
+        return RewriteStrongNegationWalker().walk(parsed)
 
-    parse = answerset.parse
-    as_render = answerset.render_answer_set
+    @staticmethod
+    def _extract_modals(modal_domains, mode):
+        for atom in modal_domains:
+            op = atom.arguments[0].ast
+            if op != mode:
+                continue
+            model = atom.arguments[1]
+            if isinstance(model, ConstantTerm):
+                model = fragments.atom(model.ast)
+            yield model
 
-    solved_src = ''
-    level = 0
+    @staticmethod
+    def undo_negation_symbol(item):
+        return render(item).replace('¬', 'aux__NEG_')
 
-    while level <= max_level:
-        world_views = {}
-        level_src = render(inject.level_constraint(level)) + '\n'
-        if level > 0 and solved_src:
-            level_src += '\n' + solved_src + '\n'
-            for rule in inject.check_solved_rules():
-                level_src += render(rule) + '\n'
-        level_path = options.level_out.with_suffix('.{}.hex'.format(level))
+    @staticmethod
+    def create_show_directives(atoms):
+        for atom in atoms:
+            num = len(getattr(atom, 'arguments', []))
+            yield '#show {}/{}.'.format(getattr(atom, 'symbol', atom.ast), num)
+
+    def parse_input(self, options):
+        self.fragments['ehex_program'] = self._parse_program(options.ehex_in)
+
+    def create_modal_literals(self):
+        self.literals.update({
+            'modals': Modals(self.fragments['ehex_program'])
+        })
+
+    def create_guess(self):
+        self.fragments['guess_rules'] = fragments.program(
+            fragments.guess_rules(
+                self.literals['modals'], self.literals['modal_domains']
+            )
+        )
+
+    def create_check(self, options):
+        self.fragments['check_rules'] = fragments.program(
+            fragments.check_rules(self.literals['modals'], options.reduct_out)
+        )
+
+    def create_reduct(self):
+        t_program = TranslationWalker().walk(self.fragments['ehex_program'])
+        rules = list(t_program.statements)
+        rules += list(fragments.guess_assignment_rules(self.literals['modals']))
+        self.fragments['reduct_program'] = fragments.program(rules)
+
+    def render_fragments(self, fragments):
+        for key, fragment in fragments.items():
+            self.src[key] = render(fragment)
+
+    def compute_envelope(self, options):
+        oa_walker = OverApproximationWalker().walk
+        envelope_src = render(oa_walker(self.fragments['ehex_program']))
         if options.debug:
-            with level_path.open('w') as level_file:
-                level_file.write(level_src)
-        src = '\n'.join([
-            level_src,
-            guess_src,
-            program_src,
-        ])
-        if options.debug:
-            print('Results at level {}:'.format(level))
-            results = dlvhex(
-                str(level_path),
-                str(options.guess_out),
-                str(options.program_out),
-                pfilter=pfilter,
+            with options.envelope_out.open('w') as envelope_file:
+                envelope_file.write(envelope_src)
+            print('Computing positive envelope and terms:', file=sys.stderr)
+            results = clingo(
+                str(options.envelope_out), debug=True, print_errors=True
             )
         else:
-            results = dlvhex(
-                text=src,
-                pfilter=pfilter,
+            results = clingo(text=envelope_src)
+        parse = answerset.parse
+        envelope = set(next(parse(results)))
+        modal_domains = {
+            literal
+            for literal in envelope
+            if getattr(literal, 'symbol', '').startswith('aux__DOM')
+        }
+        envelope -= modal_domains
+        if options.debug:
+            print('Envelope:', answerset.render(envelope), file=sys.stderr)
+            print(
+                'Modal domains:',
+                answerset.render(modal_domains), file=sys.stderr
+            )
+        self.literals.update({
+            'envelope': envelope,
+            'modal_domains': modal_domains
+        })
+
+    def create_filter_predicates(self):
+        predicates = {  # TODO: use filter from command line
+            fragments.aux_name(literal.atom.symbol, ehex.SNEG_PREFIX)
+            if isinstance(literal, StrongNegation)
+            else literal.symbol
+            for literal in self.literals['envelope']
+        } | {fragments.aux_name(ehex.IN_ATOM)}
+        if not predicates:
+            predicates = {'none'}
+        self.literals['filter_predicates'] = predicates
+
+    def create_ground_modals(self):
+        modal_domains = self.literals['modal_domains']
+        self.literals.update({
+            'ground_k_atoms': {
+                self.undo_negation_symbol(model): model
+                for model in
+                self._extract_modals(modal_domains, 'k')
+            },
+            'ground_m_atoms': {
+                render(model): model
+                for model in
+                self._extract_modals(modal_domains, 'm')
+            }
+        })
+
+    def compute_cautious_consequences(self, options, extra_src='', key=None):
+        enum_mode = 'cautious'
+        target = self.literals['consequences']
+        if key is not None:
+            target[key] = {}
+            target = target[key]
+        if not self.literals['ground_k_atoms']:
+            target[enum_mode] = {}
+            return
+        src = self.src['show_k_program'] + extra_src
+        result = clingo(
+            debug=options.debug, print_errors=options.debug,
+            text=src, enum_mode=enum_mode, project='show'
+        )
+        for ans in answerset.parse(result):
+            target[enum_mode] = {
+                self.undo_negation_symbol(item): item
+                for item in ans
+            }
+            return
+        target[enum_mode] = None
+
+    def compute_brave_consequences(self, options, key=None, extra_src=''):
+        enum_mode = 'brave'
+        target = self.literals['consequences']
+        if key is not None:
+            target[key] = {}
+            target = target[key]
+        if not self.literals['ground_m_atoms']:
+            target[enum_mode] = {}
+            return
+        src = self.src['show_m_program'] + extra_src
+        result = clingo(
+            debug=options.debug, print_errors=options.debug,
+            text=src, enum_mode=enum_mode, project='show'
+        )
+        for ans in answerset.parse(result):
+            target[enum_mode] = {
+                self.undo_negation_symbol(item): item
+                for item in ans
+            }
+            return
+        target[enum_mode] = None
+
+    def render_k_constraints(self, level):
+        literals = self.literals['consequences'][level]['cautious'].values()
+        rules = []
+        for literal in literals:
+            rules.append(
+                fragments.
+                fact(fragments.out_atom(fragments.not_k_literal(literal)))
+            )
+        return render(fragments.program(rules))
+
+    def render_m_constraints(self, level):
+        literals = {
+            self.literals['ground_m_atoms'][key]
+            for key in self.literals['ground_m_atoms']
+            if key not in self.literals['consequences'][level]['brave']
+        }
+        rules = []
+        for literal in literals:
+            rules.append(
+                fragments.constraint(
+                    fragments.
+                    not_(fragments.out_atom(fragments.m_literal(literal)))
+                )
+            )
+        return render(fragments.program(rules))
+
+    def set_src(self, name, *src):
+        sep = '\n\n%%% {} %%%\n\n'.format(name)
+        self.src[name] = sep.join(src)
+
+    def append_src(self, name, *src):
+        self.set_src(name, self.src[name], *src)
+
+    def create_show_k_src(self):
+        ground_k_atoms = self.literals['ground_k_atoms']
+        if not ground_k_atoms:
+            self.set_src('show_k_program')
+            return
+
+        directives = self.create_show_directives(
+            ground_k_atoms.values()
+        )
+        self.set_src(
+            'show_k_program', *set(directives), self.src['lp_program']
+        )
+
+    def create_show_m_src(self):
+        ground_m_atoms = self.literals['ground_m_atoms']
+        if not ground_m_atoms:
+            self.set_src('show_m_program')
+            return
+
+        directives = self.create_show_directives(
+            ground_m_atoms.values()
+        )
+        self.set_src(
+            'show_m_program', *set(directives), self.src['lp_program']
+        )
+
+    def render_solved_constraints(self, world_views, level):
+        world_views = world_views[level]
+        if not world_views:
+            return
+        symbol = fragments.aux_name(ehex.SOLVED)
+
+        def rules():
+            for i, wv in enumerate(world_views):
+                for literal in wv:
+                    term = fragments.modal_to_literal(literal)
+                    name = '"w{}@{}"'.format(i + 1, level)
+                    yield fragments.fact(fragments.atom(symbol, [name, term]))
+            yield from fragments.check_solved_rules()
+
+        self.append_src(
+            'solved_constraints', render(fragments.program(rules()))
+        )
+
+
+class Solver:
+
+    def __init__(self, context):
+        self.context = context
+        self.world_views = {}
+
+    @staticmethod
+    def segregate_literals(literals):
+        answer_set = frozenset(literals)
+        epistemic_guess = frozenset(
+            literal for literal in answer_set
+            if isinstance(literal, (DefaultNegation, Modal))
+        )
+        answer_set -= epistemic_guess
+        return epistemic_guess, answer_set
+
+    def solve(self, options):
+        context = self.context
+        src = context.src
+
+        with options.reduct_out.open('w') as reduct_file:
+            # This file is mandatory for HEX inspection
+            reduct_file.write(src['reduct_program'])
+        if options.debug:
+            with options.guess_out.open('w') as guess_file:
+                guess_file.write(src['gc_rules'])
+
+        context.compute_cautious_consequences(options)
+        context.min_level += len(context.literals['consequences']['cautious'])
+        context.compute_brave_consequences(options)
+        context.min_level += len(context.literals['ground_m_atoms']) - len(
+            context.literals['consequences']['brave']
+        )
+
+        for level in range(context.min_level, context.max_level + 1):
+            context.set_src(level, render(fragments.level_constraint(level)))
+            self.world_views[level] = {}
+            if level > context.min_level:
+                context.render_solved_constraints(self.world_views, level - 1)
+                if src['solved_constraints']:
+                    context.append_src(level, src['solved_constraints'])
+            context.compute_cautious_consequences(
+                options, extra_src=src[level], key=level
             )
 
-        first_wv = None
-        for ans in parse(results):
-            guess, ans = partition_literals(ans)
-            wv = world_views.get(guess)
-            if wv is None:
-                wv = [ans]
-                world_views[guess] = wv
+            if context.literals['consequences'][level]['cautious'] is None:
+                continue
+            kcons = context.render_k_constraints(level)
+
+            context.compute_brave_consequences(
+                options, extra_src=src[level], key=level
+            )
+            if context.literals['consequences'][level]['brave'] is None:
+                continue
+            mcons = context.render_m_constraints(level)
+
+            context.append_src(level, kcons, mcons)
+            level_path = options.level_out.with_suffix('.{}.hex'.format(level))
+            if options.debug:
+                with level_path.open('w') as level_file:
+                    level_file.write(src[level])
+            context.set_src(
+                'problem',
+                src[level],
+                src['reduct_program'],
+                src['gc_rules'],
+            )
+            if options.debug:
+                print('Results at level {}:'.format(level), file=sys.stderr)
+                results = dlvhex(
+                    str(level_path),
+                    str(options.guess_out),
+                    str(options.reduct_out),
+                    debug=True,
+                    print_errors=True,
+                    pfilter=context.literals['filter_predicates'],
+                )
             else:
-                wv.append(ans)
-            if first_wv is None:
-                first_wv = guess
-                if not options.debug:
+                results = dlvhex(
+                    text=src['problem'],
+                    pfilter=context.literals['filter_predicates'],
+                )
+
+            for ans in answerset.parse(results):
+                guess, ans = self.segregate_literals(ans)
+                if guess not in self.world_views[level]:
+                    self.world_views[level][guess] = [ans]
+                else:
+                    self.world_views[level][guess].append(ans)
+                if 'first' not in self.world_views:
+                    self.world_views['first'] = guess
+                    if not options.debug:
+                        print(
+                            'World view 1@{} wrt {}:'.
+                            format(level, answerset.render(guess))
+                        )
+                if guess == self.world_views['first'] and not options.debug:
+                    print(answerset.render(ans))
+
+            if not options.debug:
+                for i, wv in enumerate(self.world_views[level]):
+                    if wv == self.world_views['first']:
+                        continue
                     print(
-                        'World view 1@{} wrt {}:'.
-                        format(level, as_render(guess))
+                        'World view {}@{} wrt {}:'.
+                        format(i + 1, level, answerset.render(wv))
                     )
-            if guess == first_wv and not options.debug:
-                print(as_render(ans))
+                    for ans in self.world_views[level][wv]:
+                        print(answerset.render(ans))
 
-        if not options.debug:
-            for i, wv in enumerate(
-                wv for wv in world_views if wv is not first_wv
-            ):
-                print(
-                    'World view {}@{} wrt {}:'.
-                    format(i + 2, level, as_render(wv))
-                )
-                for ans in world_views[wv]:
-                    print(as_render(ans))
-
-        for i, wv in enumerate(world_views):
-            for literal in list(wv):
-                term = literal.arguments[0]
-                symbol = inject.aux_name('SOLVED')
-                solved_src += render(
-                    inject.fact(inject.atom(symbol, (i, term)))
-                ) + '\n'
-
-        if options.debug:
-            if world_views:
-                print(
-                    'Found {} world view(s) at level {}.'.
-                    format(len(world_views), level)
-                )
-            else:
-                print('No world view at level {}.'.format(level))
-        if level == 0 and world_views:
-            if max_level > 0 and options.debug:
-                print(
-                    'Solved at level 0, skipping {}.'.format(
-                        'level 1'
-                        if max_level == 1 else 'levels 1-{}'.format(max_level)
+            if options.debug:
+                if self.world_views[level]:
+                    print(
+                        'Found {} world view(s) at level {}.'.format(
+                            len(self.world_views[level]), level
+                        ), file=sys.stderr
                     )
-                )
-            break
-        level += 1
+                else:
+                    print(
+                        'No world view at level {}.'.format(level),
+                        file=sys.stderr
+                    )
+            if level == 0 and self.world_views[level]:
+                if context.max_level > 0 and options.debug:
+                    print(
+                        'Solved at level 0, skipping {}.'.format(
+                            'level 1' if context.max_level == 1 else
+                            'levels 1-{}'.format(context.max_level)
+                        )
+                    )
+                break
+            if options.planning_mode and self.world_views[level]:
+                break

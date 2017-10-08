@@ -4,36 +4,42 @@ import argparse
 import pathlib
 import signal
 import sys
-from ehex.ehexsolver import solve
+from ehex.ehexsolver import Solver, Context
 
 
 def sigterm_handler(sig, *_):
     print("Solver terminated by signal {}".format(sig), file=sys.stderr)
-    sys.exit(1)
+    sys.exit(143)
 
 
 def main():
     parser = argparse.ArgumentParser(description='EHEX solver.')
-    parser.add_argument('src', metavar='FILE', type=pathlib.Path)
-    parser.add_argument('--program-out', metavar='FILE', type=pathlib.Path)
-    parser.add_argument('--guess-out', metavar='FILE', type=pathlib.Path)
-    parser.add_argument('--envelope-out', metavar='FILE', type=pathlib.Path)
-    parser.add_argument('--level-out', metavar='FILE', type=pathlib.Path)
-    parser.add_argument('--meta-out', metavar='FILE', type=pathlib.Path)
-    parser.add_argument('-m', dest='max_level', type=int)
-    parser.add_argument('-d', dest='debug', action="store_true")
+    parser.add_argument('ehex_in', metavar='EHEX_FILE', type=pathlib.Path)
+    parser.add_argument(
+        '--reduct-out', metavar='REDUCT_FILE', type=pathlib.Path
+    )
+    parser.add_argument('--guess-out', metavar='GUESS_FILE', type=pathlib.Path)
+    parser.add_argument(
+        '--envelope-out', metavar='ENVELOPE_FILE', type=pathlib.Path
+    )
+    parser.add_argument('--level-out', metavar='LEVEL_FILE', type=pathlib.Path)
+    parser.add_argument('--meta-out', metavar='META_FILE', type=pathlib.Path)
+    parser.add_argument('-p', '--planning-mode', action="store_true")
+    parser.add_argument('-m', '--max-level', type=int)
+    parser.add_argument('-d', '--debug', action="store_true")
     options = parser.parse_args()
 
-    if options.program_out is None:
-        options.program_out = options.src.with_suffix('.hex')
+    if options.reduct_out is None:
+        options.reduct_out = options.ehex_in.with_suffix('.hex')
     if options.guess_out is None:
-        options.guess_out = options.src.with_suffix('.guess.hex')
+        options.guess_out = options.ehex_in.with_suffix('.guess.hex')
     if options.envelope_out is None:
-        options.envelope_out = options.src.with_suffix('.envelope.hex')
+        options.envelope_out = options.ehex_in.with_suffix('.envelope.hex')
     if options.level_out is None:
-        options.level_out = options.src.with_suffix('.level.hex')
+        options.level_out = options.ehex_in.with_suffix('.level.hex')
 
-    solve(options)
+    solver = Solver(Context(options))
+    solver.solve(options)
 
 
 if __name__ == '__main__':
