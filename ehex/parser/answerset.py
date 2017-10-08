@@ -121,81 +121,15 @@ class HEXAnswerSetParser(Parser):
     def _literal_(self):
         with self._choice():
             with self._option():
-                self._atom_()
-            with self._option():
-                self._default_negated_literal_()
-            with self._option():
-                self._modal_literal_()
+                self._epistemic_rejection_()
             with self._option():
                 self._strong_negated_atom_()
+            with self._option():
+                self._atom_()
             self._error('no available options')
-
-    @graken('DefaultNegation')
-    def _default_negated_literal_(self):
-        self._AUX_MARKER_()
-        self._DNEG_PREFIX_()
-        self._cut()
-        self._pattern(r'_')
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._modal_literal_()
-                with self._option():
-                    self._strong_negated_atom_()
-                with self._option():
-                    self._atom_()
-                self._error('no available options')
-        self.name_last_node('literal')
-        self.ast._define(
-            ['literal'],
-            []
-        )
-
-    @graken('Modal')
-    def _modal_literal_(self):
-        with self._optional():
-            self._AUX_MARKER_()
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._K_PREFIX_()
-                with self._option():
-                    self._M_PREFIX_()
-                self._error('no available options')
-        self.name_last_node('op')
-        self._cut()
-        self._pattern(r'_')
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._strong_negated_atom_()
-                with self._option():
-                    self._atom_()
-                self._error('no available options')
-        self.name_last_node('literal')
-        self.ast._define(
-            ['literal', 'op'],
-            []
-        )
 
     @graken('Atom')
     def _atom_(self):
-        with self._ifnot():
-            with self._group():
-                with self._optional():
-                    self._AUX_MARKER_()
-                with self._group():
-                    with self._choice():
-                        with self._option():
-                            self._SNEG_PREFIX_()
-                        with self._option():
-                            self._K_PREFIX_()
-                        with self._option():
-                            self._M_PREFIX_()
-                        with self._option():
-                            self._DNEG_PREFIX_()
-                        self._error('no available options')
-        self._cut()
         self._predicate_symbol_()
         self.name_last_node('symbol')
         with self._optional():
@@ -235,6 +169,63 @@ class HEXAnswerSetParser(Parser):
         )
 
     @graken()
+    def _epistemic_rejection_(self):
+        self._AUX_MARKER_()
+        self._GUESS_PREFIX_()
+        self._cut()
+        self._PAREN_OPEN_()
+        with self._group():
+            with self._choice():
+                with self._option():
+                    self._modal_()
+                with self._option():
+                    self._default_negated_modal_()
+                self._error('no available options')
+        self.name_last_node('@')
+        self._PAREN_CLOSE_()
+
+    @graken('Modal')
+    def _modal_(self):
+        with self._optional():
+            self._AUX_MARKER_()
+        with self._group():
+            with self._choice():
+                with self._option():
+                    self._K_PREFIX_()
+                with self._option():
+                    self._M_PREFIX_()
+                self._error('no available options')
+        self.name_last_node('op')
+        self._cut()
+        self._pattern(r'_')
+        with self._group():
+            with self._choice():
+                with self._option():
+                    self._strong_negated_atom_()
+                with self._option():
+                    self._atom_()
+                self._error('no available options')
+        self.name_last_node('literal')
+        self.ast._define(
+            ['literal', 'op'],
+            []
+        )
+
+    @graken('DefaultNegation')
+    def _default_negated_modal_(self):
+        self._AUX_MARKER_()
+        self._DNEG_PREFIX_()
+        self.name_last_node('op')
+        self._cut()
+        self._pattern(r'_')
+        self._modal_()
+        self.name_last_node('literal')
+        self.ast._define(
+            ['literal', 'op'],
+            []
+        )
+
+    @graken()
     def _predicate_symbol_(self):
         self._ID_()
 
@@ -253,82 +244,9 @@ class HEXAnswerSetParser(Parser):
     def _term_(self):
         with self._choice():
             with self._option():
-                self._arith_expr_()
-            with self._option():
-                self._basic_term_()
-            self._error('no available options')
-
-    @graken()
-    def _arith_expr_(self):
-        with self._choice():
-            with self._option():
-                self._additive_()
-            with self._option():
-                self._multiplicative_()
-            self._error('no available options')
-
-    @graken('AdditiveTerm')
-    def _additive_(self):
-        self._arith_term_()
-        self.add_last_node_to_name('@')
-
-        def block1():
-            with self._group():
-                with self._choice():
-                    with self._option():
-                        self._PLUS_()
-                    with self._option():
-                        self._MINUS_()
-                    self._error('no available options')
-            self.name_last_node('@')
-            self._cut()
-            self._arith_term_()
-            self.name_last_node('@')
-        self._positive_closure(block1)
-
-    @graken()
-    def _arith_term_(self):
-        with self._choice():
-            with self._option():
-                self._multiplicative_()
-            with self._option():
-                self._basic_term_()
-            self._error('no available options')
-
-    @graken('MultiplicativeTerm')
-    def _multiplicative_(self):
-        self._arith_factor_()
-        self.add_last_node_to_name('@')
-
-        def block1():
-            with self._group():
-                with self._choice():
-                    with self._option():
-                        self._TIMES_()
-                    with self._option():
-                        self._DIV_()
-                    self._error('no available options')
-            self.name_last_node('@')
-            self._cut()
-            self._arith_factor_()
-            self.name_last_node('@')
-        self._positive_closure(block1)
-
-    @graken()
-    def _arith_factor_(self):
-        self._basic_term_()
-
-    @graken()
-    def _basic_term_(self):
-        with self._choice():
-            with self._option():
                 self._functional_()
             with self._option():
                 self._constant_()
-            with self._option():
-                self._variable_()
-            with self._option():
-                self._subterm_()
             with self._option():
                 self._negative_term_()
             self._error('no available options')
@@ -352,14 +270,6 @@ class HEXAnswerSetParser(Parser):
     def _function_symbol_(self):
         self._ID_()
 
-    @graken('SubTerm')
-    def _subterm_(self):
-        self._PAREN_OPEN_()
-        self._cut()
-        self._term_()
-        self.name_last_node('@')
-        self._PAREN_CLOSE_()
-
     @graken('NegativeTerm')
     def _negative_term_(self):
         self._MINUS_()
@@ -377,22 +287,9 @@ class HEXAnswerSetParser(Parser):
                 self._NUMBER_()
             self._error('no available options')
 
-    @graken('VariableTerm')
-    def _variable_(self):
-        with self._choice():
-            with self._option():
-                self._ANONYMOUS_VARIABLE_()
-            with self._option():
-                self._VARIABLE_()
-            self._error('no available options')
-
     @graken()
     def _ID_(self):
         self._pattern(r'[a-z][a-zA-Z0-9_]*')
-
-    @graken()
-    def _VARIABLE_(self):
-        self._pattern(r'[A-Z][a-zA-Z0-9_]*')
 
     @graken()
     def _STRING_(self):
@@ -401,10 +298,6 @@ class HEXAnswerSetParser(Parser):
     @graken('int')
     def _NUMBER_(self):
         self._pattern(r'0|\d+')
-
-    @graken()
-    def _ANONYMOUS_VARIABLE_(self):
-        self._token('_')
 
     @graken()
     def _COMMA_(self):
@@ -462,6 +355,10 @@ class HEXAnswerSetParser(Parser):
     def _SNEG_PREFIX_(self):
         self._pattern(r'NEG')
 
+    @graken()
+    def _GUESS_PREFIX_(self):
+        self._pattern(r'IN')
+
 
 class HEXAnswerSetSemantics(object):
     def start(self, ast):
@@ -482,16 +379,19 @@ class HEXAnswerSetSemantics(object):
     def literal(self, ast):
         return ast
 
-    def default_negated_literal(self, ast):
-        return ast
-
-    def modal_literal(self, ast):
-        return ast
-
     def atom(self, ast):
         return ast
 
     def strong_negated_atom(self, ast):
+        return ast
+
+    def epistemic_rejection(self, ast):
+        return ast
+
+    def modal(self, ast):
+        return ast
+
+    def default_negated_modal(self, ast):
         return ast
 
     def predicate_symbol(self, ast):
@@ -503,31 +403,10 @@ class HEXAnswerSetSemantics(object):
     def term(self, ast):
         return ast
 
-    def arith_expr(self, ast):
-        return ast
-
-    def additive(self, ast):
-        return ast
-
-    def arith_term(self, ast):
-        return ast
-
-    def multiplicative(self, ast):
-        return ast
-
-    def arith_factor(self, ast):
-        return ast
-
-    def basic_term(self, ast):
-        return ast
-
     def functional(self, ast):
         return ast
 
     def function_symbol(self, ast):
-        return ast
-
-    def subterm(self, ast):
         return ast
 
     def negative_term(self, ast):
@@ -536,22 +415,13 @@ class HEXAnswerSetSemantics(object):
     def constant(self, ast):
         return ast
 
-    def variable(self, ast):
-        return ast
-
     def ID(self, ast):
-        return ast
-
-    def VARIABLE(self, ast):
         return ast
 
     def STRING(self, ast):
         return ast
 
     def NUMBER(self, ast):
-        return ast
-
-    def ANONYMOUS_VARIABLE(self, ast):
         return ast
 
     def COMMA(self, ast):
@@ -594,6 +464,9 @@ class HEXAnswerSetSemantics(object):
         return ast
 
     def SNEG_PREFIX(self, ast):
+        return ast
+
+    def GUESS_PREFIX(self, ast):
         return ast
 
 
