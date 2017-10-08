@@ -1,8 +1,8 @@
 % Yale Shooting Problem #3
 
 horizon(3).
-step(S) ← #int(S), S <= N, horizon(N).
-action_step(S) ← step(S), S < N, horizon(N).
+step(0..3).
+action_step(0..2).
 isnext(T, S) ← T = S + 1, action_step(S).
 
 fluent(alive).

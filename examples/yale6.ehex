@@ -1,8 +1,8 @@
 % Yale Shooting Problem #6
 
 horizon(6).
-step(S) ← #int(S), S <= N, horizon(N).
-action_step(S) ← step(S), S < N, horizon(N).
+step(0..6).
+action_step(0..5).
 isnext(T, S) ← T = S + 1, action_step(S).
 
 fluent(aimed).
