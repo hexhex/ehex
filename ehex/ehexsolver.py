@@ -52,8 +52,10 @@ class Context:
         self.create_show_k_src()
         self.create_show_m_src()
         self.min_level = 0
-        max_level = options.max_level or len(self.literals['modal_domains'])
-        self.max_level = min(len(self.literals['modal_domains']), max_level)
+        max_level = len(self.literals['modal_domains'])
+        if options.max_level is not None:
+            max_level = min(max_level, options.max_level)
+        self.max_level = max_level
 
     @staticmethod
     def _parse_program(program_path):
@@ -109,11 +111,13 @@ class Context:
     def create_reduct(self):
         t_program = TranslationWalker().walk(self.fragments['ehex_program'])
         rules = list(t_program.statements)
-        rules += list(fragments.guess_assignment_rules(self.literals['modals']))
+        rules += list(
+            fragments.guess_assignment_rules(self.literals['modals'])
+        )
         self.fragments['reduct_program'] = fragments.program(rules)
 
-    def render_fragments(self, fragments):
-        for key, fragment in fragments.items():
+    def render_fragments(self, fragments_map):
+        for key, fragment in fragments_map.items():
             self.src[key] = render(fragment)
 
     def compute_envelope(self, options):
@@ -177,7 +181,7 @@ class Context:
         enum_mode = 'cautious'
         target = self.literals['consequences']
         if key is not None:
-            target[key] = {}
+            target[key] = target.get(key, {})
             target = target[key]
         if not self.literals['ground_k_atoms']:
             target[enum_mode] = {}
@@ -199,7 +203,7 @@ class Context:
         enum_mode = 'brave'
         target = self.literals['consequences']
         if key is not None:
-            target[key] = {}
+            target[key] = target.get(key, {})
             target = target[key]
         if not self.literals['ground_m_atoms']:
             target[enum_mode] = {}
@@ -225,14 +229,17 @@ class Context:
                 fragments.
                 fact(fragments.out_atom(fragments.not_k_literal(literal)))
             )
-        return render(fragments.program(rules))
+        self.src['k_constraints'] = render(fragments.program(rules))
 
     def render_m_constraints(self, level):
-        literals = {
+        keys = (
+            self.literals['ground_m_atoms'].keys() -
+            self.literals['consequences'][level]['brave'].keys()
+        )
+        literals = [
             self.literals['ground_m_atoms'][key]
-            for key in self.literals['ground_m_atoms']
-            if key not in self.literals['consequences'][level]['brave']
-        }
+            for key in keys
+        ]
         rules = []
         for literal in literals:
             rules.append(
@@ -241,7 +248,7 @@ class Context:
                     not_(fragments.out_atom(fragments.m_literal(literal)))
                 )
             )
-        return render(fragments.program(rules))
+        self.src['m_constraints'] = render(fragments.program(rules))
 
     def set_src(self, name, *src):
         sep = '\n\n%%% {} %%%\n\n'.format(name)
@@ -336,33 +343,40 @@ class Solver:
                 context.render_solved_constraints(self.world_views, level - 1)
                 if src['solved_constraints']:
                     context.append_src(level, src['solved_constraints'])
+
             context.compute_cautious_consequences(
                 options, extra_src=src[level], key=level
             )
-
             if context.literals['consequences'][level]['cautious'] is None:
                 continue
-            kcons = context.render_k_constraints(level)
 
             context.compute_brave_consequences(
                 options, extra_src=src[level], key=level
             )
             if context.literals['consequences'][level]['brave'] is None:
                 continue
-            mcons = context.render_m_constraints(level)
 
-            context.append_src(level, kcons, mcons)
-            level_path = options.level_out.with_suffix('.{}.hex'.format(level))
+            check_level = len(
+                context.literals['consequences'][level]['cautious']
+            )
+            check_level += len(context.literals['ground_m_atoms']) - len(
+                context.literals['consequences'][level]['brave']
+            )
+            if level < check_level:
+                continue
+
+            context.render_k_constraints(level)
+            context.render_m_constraints(level)
+            context.append_src(
+                level, src['k_constraints'], src['m_constraints']
+            )
+
             if options.debug:
+                level_path = options.level_out.with_suffix(
+                    '.{}.hex'.format(level)
+                )
                 with level_path.open('w') as level_file:
                     level_file.write(src[level])
-            context.set_src(
-                'problem',
-                src[level],
-                src['reduct_program'],
-                src['gc_rules'],
-            )
-            if options.debug:
                 print('Results at level {}:'.format(level), file=sys.stderr)
                 results = dlvhex(
                     str(level_path),
@@ -373,6 +387,12 @@ class Solver:
                     pfilter=context.literals['filter_predicates'],
                 )
             else:
+                context.set_src(
+                    'problem',
+                    src[level],
+                    src['reduct_program'],
+                    src['gc_rules'],
+                )
                 results = dlvhex(
                     text=src['problem'],
                     pfilter=context.literals['filter_predicates'],
