@@ -1,10 +1,11 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='ehex',
     description='EHEX program parser and solver',
     url='https://github.com/hexhex/ehex',
     author='Tonico Strasser',
+    packages=find_packages(),
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
