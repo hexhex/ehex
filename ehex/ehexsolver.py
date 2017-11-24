@@ -266,9 +266,8 @@ class Context:
         directives = self.create_show_directives(
             ground_k_atoms.values()
         )
-        self.set_src(
-            'show_k_program', *set(directives), self.src['lp_program']
-        )
+        self.set_src('show_k_program', *set(directives))
+        self.append_src('show_k_program', self.src['lp_program'])
 
     def create_show_m_src(self):
         ground_m_atoms = self.literals['ground_m_atoms']
@@ -279,9 +278,8 @@ class Context:
         directives = self.create_show_directives(
             ground_m_atoms.values()
         )
-        self.set_src(
-            'show_m_program', *set(directives), self.src['lp_program']
-        )
+        self.set_src('show_m_program', *set(directives))
+        self.append_src('show_m_program', self.src['lp_program'])
 
     def render_solved_constraints(self, world_views, level):
         world_views = world_views[level]
