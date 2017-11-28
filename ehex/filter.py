@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from grako.model import NodeWalker
+from tatsu.model import NodeWalker
 from ehex.codegen import EHEXCodeGenerator as CodeGenerator
 from ehex.utils import is_iterable
 

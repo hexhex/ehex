@@ -1,6 +1,6 @@
 import sys
-from grako.codegen import ModelRenderer
-from grako.codegen import CodeGenerator
+from tatsu.codegen import ModelRenderer
+from tatsu.codegen import CodeGenerator
 
 THIS_MODULE = sys.modules[__name__]
 

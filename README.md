@@ -20,4 +20,4 @@ $ cd ehex
 $ ehex examples/eligible.ehex
 ```
 
-Dependencies: Python 3.4+, [Grako](https://bitbucket.org/apalala/grako); also make sure `dlvhex2` with the [NestedHexPlugin](https://github.com/hexhex/nestedhexplugin) and `clingo` 5.2.x is in your path.
+Dependencies: Python 3.4+, [TatSu](https://github.com/neogeny/tatsu); also make sure `dlvhex2` with the [NestedHexPlugin](https://github.com/hexhex/nestedhexplugin) and `clingo` 5.2.x is in your path.

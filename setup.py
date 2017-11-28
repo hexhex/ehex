@@ -16,7 +16,7 @@ setup(
         'Programming Language :: Python :: 3.6',
     ],
     keywords='epistemic hex logic answerset programming asp',
-    install_requires=['grako==3.18.1'],
+    install_requires=['tatsu>=4.2.5'],
     python_requires='>=3.4',
     entry_points={
         'console_scripts': [

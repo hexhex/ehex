@@ -24,7 +24,7 @@ http://arxiv.org/abs/1608.06910
 from copy import copy
 from functools import wraps
 
-from grako.model import NodeWalker
+from tatsu.model import NodeWalker
 
 from ehex import fragments
 from ehex.filter import ExtendedModals
