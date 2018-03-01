@@ -196,6 +196,11 @@ class Context:
                 self.undo_negation_symbol(item): item
                 for item in ans
             }
+            for key in (
+                target[enum_mode].keys() -
+                self.literals['ground_k_atoms'].keys()
+            ):
+                del target[enum_mode][key]
             return
         target[enum_mode] = None
 
@@ -218,6 +223,11 @@ class Context:
                 self.undo_negation_symbol(item): item
                 for item in ans
             }
+            for key in (
+                target[enum_mode].keys() -
+                self.literals['ground_m_atoms'].keys()
+            ):
+                del target[enum_mode][key]
             return
         target[enum_mode] = None
 
