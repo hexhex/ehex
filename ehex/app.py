@@ -10,6 +10,25 @@ def sigterm_handler(sig, *_):
     sys.exit(143)
 
 
+class GrounderAction(argparse.Action):
+    CHOICES = ['asp', 'pen']
+    E1 = 'unknown grounder: {} (choose from {})'
+    E2 = 'duplicate value: {}'
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        grounder = set()
+        for value in values:
+            if value not in self.CHOICES:
+                choices = ', '.join(repr(value) for value in self.CHOICES)
+                message = self.E1.format(repr(value), choices)
+                raise argparse.ArgumentError(self, message)
+            if value in grounder:
+                message = (self.E2.format(repr(value)))
+                raise argparse.ArgumentError(self, message)
+            grounder.add(value)
+        setattr(namespace, self.dest, grounder)
+
+
 def main():
     signal.signal(signal.SIGTERM, sigterm_handler)
 
@@ -24,9 +43,13 @@ def main():
     )
     parser.add_argument('--level-out', metavar='LEVEL_FILE', type=pathlib.Path)
     parser.add_argument('--meta-out', metavar='META_FILE', type=pathlib.Path)
-    parser.add_argument('-p', '--planning-mode', action="store_true")
-    parser.add_argument('-m', '--max-level', type=int)
     parser.add_argument('-d', '--debug', action="store_true")
+    parser.add_argument('-g', '--grounder', nargs='+', action=GrounderAction)
+    parser.add_argument('-m', '--max-level', type=int)
+    parser.add_argument('-p', '--planning-mode', action="store_true")
+    parser.add_argument('-q', '--enable-queries', action="store_true")
+    parser.add_argument('-s', '--se-semantics', action="store_true")
+    parser.add_argument('-w', '--one-world-view', action="store_true")
     options = parser.parse_args()
 
     if options.reduct_out is None:
