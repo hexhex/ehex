@@ -4,21 +4,24 @@
 
 """We apply a variant of the following translation rules from Kahl et al. 2016:
 
-        ┌───────────────┬──────────────┬────────────────────────┐
-        │ Modal literal │ Replace with │ Add rules              │
-        ├───────────────┼──────────────┼────────────────────────┤
-        │ K ℓ           │ not ¬k_ℓ, ℓ  │ ¬k_ℓ ← k0_ℓ.           │
-        ├───────────────┼──────────────┤ ¬k_ℓ ← k1_ℓ, not ℓ.    │
-        │ not K ℓ       │ ¬k_ℓ         │                        │
-        ├───────────────┼──────────────┼────────────────────────┤
-        │ M ℓ           │ m_ℓ          │ m_ℓ ← m1_ℓ.            │
-        ├───────────────┼──────────────┤ m_ℓ ← m0_ℓ, not not ℓ. │
-        │ not M ℓ       │ not m_ℓ      │                        │
-        └───────────────┴──────────────┴────────────────────────┘
+        ┌───────────────┬──────────────┬─────────────────────────┐
+        │ Modal literal │ Replace with │ Add rules               │
+        ├───────────────┼──────────────┼─────────────────────────┤
+        │ K ℓ           │ not ¬k_ℓ, ℓ  │ ¬k_ℓ ← k0_ℓ.            │
+        ├───────────────┼──────────────┤ ¬k_ℓ ← k1_ℓ, not ℓ.     │
+        │ not K ℓ       │ ¬k_ℓ         │                         │
+        ├───────────────┼──────────────┼─────────────────────────┤
+        │ M ℓ           │ m_ℓ          │ m_ℓ ← m1_ℓ.             │
+        ├───────────────┼──────────────┤ m_ℓ ← m0_ℓ, [not not]ℓ. │
+        │ not M ℓ       │ not m_ℓ      │                         │
+        └───────────────┴──────────────┴─────────────────────────┘
 
 Kahl, P. T., Leclerc, A. P., & Son, T. C. (2016). A Parallel Memory-efficient
 Epistemic Logic Program Solver: Harder, Better, Faster. Retrieved from
 http://arxiv.org/abs/1608.06910
+
+The double negation is turned off by default and can be enabled using the flag
+--kahl-semantics on the command line.
 """
 
 from copy import copy

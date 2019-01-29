@@ -16,6 +16,8 @@ from ehex import (
     EPISTEMIC_NEGATION,
     DOMAIN,
     SOLVED,
+    KAHL_SEMANTICS,
+    SE_SEMANTICS,
 )
 
 
@@ -248,16 +250,20 @@ def check_solved_rules():
     yield constraint([not_(not_solved_atom('Z')), solved_atom(['Z', '_'])])
 
 
-def _guess_rules(modals):
+def _guess_rules(modals, semantics):
     yield constraint([in_atom('X'), out_atom('X')])
     for modal in modals:
         if isinstance(modal, model.DefaultNegation):
             modal = modal.literal
         op = modal.op.lower()
-        not_l = not_atom(modal.literal.symbol, modal.literal.arguments)
+        if semantics is KAHL_SEMANTICS:
+            not_l = not_atom(modal.literal.symbol, modal.literal.arguments)
+            m_condition = not_(not_l)
+        else:
+            m_condition = modal.literal
         condition = {
             'K': not_(modal.literal),
-            'M': not_(not_l),
+            'M': m_condition,
         }
         datom = modal_domain_atom(
             op, modal.literal.symbol, modal.literal.arguments
@@ -301,8 +307,8 @@ def domain_facts(modal_domains):
         yield fact(modal_domain_atom(op, symbol, terms))
 
 
-def guess_rules(modals, modal_domains):
-    yield from _guess_rules(modals)
+def guess_rules(modals, modal_domains, semantics):
+    yield from _guess_rules(modals, semantics)
     yield from domain_facts(modal_domains)
 
 
@@ -312,7 +318,7 @@ def check_rules(modals, path):
     yield from _check_rules(modals)
 
 
-def guess_assignment_rules(modals):
+def guess_assignment_rules(modals, semantics):
     for modal in modals:
         literal = modal.literal
         modal_literal = modal_to_literal(modal)
@@ -322,8 +328,11 @@ def guess_assignment_rules(modals):
         if modal.op == 'K':
             yield rule(modal_literal, [out_guess, not_(literal)])
         elif modal.op == 'M':
-            not_l = not_atom(literal.symbol, literal.arguments)
-            yield rule(modal_literal, [out_guess, not_(not_l)])
-            yield rule(not_l, [out_guess, not_(literal)])
+            if semantics is KAHL_SEMANTICS:
+                not_l = not_atom(literal.symbol, literal.arguments)
+                yield rule(modal_literal, [out_guess, not_(not_l)])
+                yield rule(not_l, [out_guess, not_(literal)])
+            else:
+                yield rule(modal_literal, [out_guess, literal])
         else:
             assert False

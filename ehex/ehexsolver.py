@@ -34,9 +34,9 @@ class Context:
         self.parse_input(options)
         self.create_modal_literals()
         self.compute_envelope(options)
-        self.create_guess()
+        self.create_guess(options)
         self.create_check(options)
-        self.create_reduct()
+        self.create_reduct(options)
         self.create_filter_predicates()
         self.create_ground_modals()
         self.render_fragments(self.fragments)
@@ -96,10 +96,11 @@ class Context:
             'modals': Modals(self.fragments['ehex_program'])
         })
 
-    def create_guess(self):
+    def create_guess(self, options):
         self.fragments['guess_rules'] = fragments.program(
             fragments.guess_rules(
-                self.literals['modals'], self.literals['modal_domains']
+                self.literals['modals'], self.literals['modal_domains'],
+                semantics=options.semantics
             )
         )
 
@@ -108,11 +109,13 @@ class Context:
             fragments.check_rules(self.literals['modals'], options.reduct_out)
         )
 
-    def create_reduct(self):
+    def create_reduct(self, options):
         t_program = TranslationWalker().walk(self.fragments['ehex_program'])
         rules = list(t_program.statements)
         rules += list(
-            fragments.guess_assignment_rules(self.literals['modals'])
+            fragments.guess_assignment_rules(
+                self.literals['modals'], options.semantics
+            )
         )
         self.fragments['reduct_program'] = fragments.program(rules)
 
