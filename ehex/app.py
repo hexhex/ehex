@@ -43,7 +43,6 @@ def main():
         '--envelope-out', metavar='ENVELOPE_FILE', type=pathlib.Path
     )
     parser.add_argument('--level-out', metavar='LEVEL_FILE', type=pathlib.Path)
-    parser.add_argument('--meta-out', metavar='META_FILE', type=pathlib.Path)
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-g', '--grounder', nargs='+', action=GrounderAction)
     parser.add_argument('-m', '--max-level', type=int)
