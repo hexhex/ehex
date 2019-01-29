@@ -167,7 +167,7 @@ def path_atom():
 
 
 def k_constraints(modal):
-    term = guess_term(modal)
+    term = guessing_term(modal)
     symbol = modal.literal.symbol
     terms = [term for term in Terms(modal)]
     datom = modal_domain_atom('k', symbol, terms)
@@ -185,7 +185,7 @@ def k_constraints(modal):
 
 
 def m_constraints(modal):
-    term = guess_term(modal)
+    term = guessing_term(modal)
     symbol = modal.literal.symbol
     terms = [term for term in Terms(modal)]
     datom = modal_domain_atom('m', symbol, terms)
@@ -200,7 +200,7 @@ def functional_term(symbol, terms=None):
     return model.FunctionalTerm(symbol=symbol, arguments=terms)
 
 
-def guess_term(modal):
+def guessing_term(modal):
     literal = modal_to_literal(modal)
     arguments = getattr(literal, 'arguments', None)
     return functional_term(literal.symbol, arguments)
@@ -250,7 +250,7 @@ def check_solved_rules():
     yield constraint([not_(not_solved_atom('Z')), solved_atom(['Z', '_'])])
 
 
-def _guess_rules(modals, semantics):
+def _guessing_rules(modals, semantics):
     yield constraint([in_atom('X'), out_atom('X')])
     for modal in modals:
         if isinstance(modal, model.DefaultNegation):
@@ -307,8 +307,8 @@ def domain_facts(modal_domains):
         yield fact(modal_domain_atom(op, symbol, terms))
 
 
-def guess_rules(modals, modal_domains, semantics):
-    yield from _guess_rules(modals, semantics)
+def guessing_rules(modals, modal_domains, semantics):
+    yield from _guessing_rules(modals, semantics)
     yield from domain_facts(modal_domains)
 
 
@@ -318,12 +318,12 @@ def check_rules(modals, path):
     yield from _check_rules(modals)
 
 
-def guess_assignment_rules(modals, semantics):
+def guessing_assignment_rules(modals, semantics):
     for modal in modals:
         literal = modal.literal
         modal_literal = modal_to_literal(modal)
-        in_guess = in_atom(guess_term(modal))
-        out_guess = out_atom(guess_term(modal))
+        in_guess = in_atom(guessing_term(modal))
+        out_guess = out_atom(guessing_term(modal))
         yield rule(modal_literal, in_guess)
         if modal.op == 'K':
             yield rule(modal_literal, [out_guess, not_(literal)])

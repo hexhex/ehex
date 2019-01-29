@@ -38,7 +38,7 @@ def main():
     parser.add_argument(
         '--reduct-out', metavar='REDUCT_FILE', type=pathlib.Path
     )
-    parser.add_argument('--guess-out', metavar='GUESS_FILE', type=pathlib.Path)
+    parser.add_argument('--guessing-out', metavar='GUESSING_FILE', type=pathlib.Path)
     parser.add_argument(
         '--envelope-out', metavar='ENVELOPE_FILE', type=pathlib.Path
     )
@@ -46,6 +46,7 @@ def main():
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-g', '--grounder', nargs='+', action=GrounderAction)
     parser.add_argument('-m', '--max-level', type=int)
+    parser.add_argument('-o', '--optimize-guessing', action='store_true')
     parser.add_argument('-p', '--planning-mode', action='store_true')
     parser.add_argument('-q', '--enable-queries', action='store_true')
     parser.add_argument(
@@ -57,8 +58,8 @@ def main():
 
     if options.reduct_out is None:
         options.reduct_out = options.ehex_in.with_suffix('.hex')
-    if options.guess_out is None:
-        options.guess_out = options.ehex_in.with_suffix('.guess.hex')
+    if options.guessing_out is None:
+        options.guessing_out = options.ehex_in.with_suffix('.guess.hex')
     if options.envelope_out is None:
         options.envelope_out = options.ehex_in.with_suffix('.envelope.hex')
     if options.level_out is None:

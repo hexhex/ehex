@@ -34,7 +34,7 @@ class Context:
         self.parse_input(options)
         self.create_modal_literals()
         self.compute_envelope(options)
-        self.create_guess(options)
+        self.create_guessing(options)
         self.create_check(options)
         self.create_reduct(options)
         self.create_filter_predicates()
@@ -42,12 +42,12 @@ class Context:
         self.render_fragments(self.fragments)
         if options.planning_mode:
             self.append_src(
-                'guess_rules',
+                'guessing_rules',
                 ':- aux__IN(aux__NOT_K_goal).',
                 ':- aux__OUT(aux__M_goal).',
             )
-        self.set_src('lp_program', src['reduct_program'], src['guess_rules'])
-        self.set_src('gc_rules', src['guess_rules'], src['check_rules'])
+        self.set_src('lp_program', src['reduct_program'], src['guessing_rules'])
+        self.set_src('gc_rules', src['guessing_rules'], src['check_rules'])
         self.set_src('solved_constraints')
         self.create_show_k_src()
         self.create_show_m_src()
@@ -96,9 +96,9 @@ class Context:
             'modals': Modals(self.fragments['ehex_program'])
         })
 
-    def create_guess(self, options):
-        self.fragments['guess_rules'] = fragments.program(
-            fragments.guess_rules(
+    def create_guessing(self, options):
+        self.fragments['guessing_rules'] = fragments.program(
+            fragments.guessing_rules(
                 self.literals['modals'], self.literals['modal_domains'],
                 semantics=options.semantics
             )
@@ -113,7 +113,7 @@ class Context:
         t_program = TranslationWalker().walk(self.fragments['ehex_program'])
         rules = list(t_program.statements)
         rules += list(
-            fragments.guess_assignment_rules(
+            fragments.guessing_assignment_rules(
                 self.literals['modals'], options.semantics
             )
         )
@@ -337,8 +337,8 @@ class Solver:
             # This file is mandatory for HEX inspection
             reduct_file.write(src['reduct_program'])
         if options.debug:
-            with options.guess_out.open('w') as guess_file:
-                guess_file.write(src['gc_rules'])
+            with options.guessing_out.open('w') as guessing_file:
+                guessing_file.write(src['gc_rules'])
 
         context.compute_cautious_consequences(options)
         context.min_level += len(context.literals['consequences']['cautious'])
@@ -391,7 +391,7 @@ class Solver:
                 print('Results at level {}:'.format(level), file=sys.stderr)
                 results = dlvhex(
                     str(level_path),
-                    str(options.guess_out),
+                    str(options.guessing_out),
                     str(options.reduct_out),
                     debug=True,
                     print_errors=True,
