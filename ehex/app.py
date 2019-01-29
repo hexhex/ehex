@@ -38,7 +38,9 @@ def main():
     parser.add_argument(
         '--reduct-out', metavar='REDUCT_FILE', type=pathlib.Path
     )
-    parser.add_argument('--guessing-out', metavar='GUESSING_FILE', type=pathlib.Path)
+    parser.add_argument(
+        '--guessing-out', metavar='GUESSING_FILE', type=pathlib.Path
+    )
     parser.add_argument(
         '--envelope-out', metavar='ENVELOPE_FILE', type=pathlib.Path
     )

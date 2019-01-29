@@ -250,7 +250,7 @@ def check_solved_rules():
     yield constraint([not_(not_solved_atom('Z')), solved_atom(['Z', '_'])])
 
 
-def _guessing_rules(modals, semantics):
+def _guessing_rules(modals, semantics, optimize):
     yield constraint([in_atom('X'), out_atom('X')])
     for modal in modals:
         if isinstance(modal, model.DefaultNegation):
@@ -274,6 +274,8 @@ def _guessing_rules(modals, semantics):
                 out_atom(modal_to_literal(modal))
             ]), [datom]
         )
+        if not optimize:
+            continue
         yield rule(
             in_atom(modal_to_literal(modal)), [datom, condition[modal.op]]
         )
@@ -307,8 +309,8 @@ def domain_facts(modal_domains):
         yield fact(modal_domain_atom(op, symbol, terms))
 
 
-def guessing_rules(modals, modal_domains, semantics):
-    yield from _guessing_rules(modals, semantics)
+def guessing_rules(modals, modal_domains, semantics, optimize):
+    yield from _guessing_rules(modals, semantics, optimize)
     yield from domain_facts(modal_domains)
 
 

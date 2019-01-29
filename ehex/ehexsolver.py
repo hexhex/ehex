@@ -100,7 +100,7 @@ class Context:
         self.fragments['guessing_rules'] = fragments.program(
             fragments.guessing_rules(
                 self.literals['modals'], self.literals['modal_domains'],
-                semantics=options.semantics
+                semantics=options.semantics, optimize=options.optimize_guessing
             )
         )
 
