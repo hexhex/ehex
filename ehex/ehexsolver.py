@@ -234,20 +234,18 @@ class Context:
             return
         target[enum_mode] = None
 
-    def render_k_constraints(self, level):
+    def render_k_facts(self, level):
         literals = self.literals['consequences'][level]['cautious'].values()
         rules = []
         for literal in literals:
             rules.append(
-                fragments.constraint(
-                    fragments.not_(
-                        fragments.out_atom(fragments.not_k_literal(literal))
-                    )
+                fragments.fact(
+                    fragments.out_atom(fragments.not_k_literal(literal))
                 )
             )
-        self.src['k_constraints'] = render(fragments.program(rules))
+        self.src['k_facts'] = render(fragments.program(rules))
 
-    def render_m_constraints(self, level):
+    def render_m_facts(self, level):
         keys = (
             self.literals['ground_m_atoms'].keys() -
             self.literals['consequences'][level]['brave'].keys()
@@ -259,13 +257,11 @@ class Context:
         rules = []
         for literal in literals:
             rules.append(
-                fragments.constraint(
-                    fragments.not_(
-                        fragments.out_atom(fragments.m_literal(literal))
-                    )
+                fragments.fact(
+                    fragments.out_atom(fragments.m_literal(literal))
                 )
             )
-        self.src['m_constraints'] = render(fragments.program(rules))
+        self.src['m_facts'] = render(fragments.program(rules))
 
     def set_src(self, name, *src):
         sep = '\n\n%%% {} %%%\n\n'.format(name)
@@ -382,10 +378,10 @@ class Solver:
                 if level < check_level:
                     continue
 
-                context.render_k_constraints(level)
-                context.render_m_constraints(level)
+                context.render_k_facts(level)
+                context.render_m_facts(level)
                 context.append_src(
-                    level, src['k_constraints'], src['m_constraints']
+                    level, src['k_facts'], src['m_facts']
                 )
 
             if options.debug:
