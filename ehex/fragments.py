@@ -133,11 +133,11 @@ def neg(atom_):
     return model.StrongNegation(atom=atom_)
 
 
-def modal_to_literal(modal, switch_mode=False):
+def guessing_atom(modal, opposite=False):
     if isinstance(modal, model.DefaultNegation):
         modal = modal.literal
     op = modal.op
-    if switch_mode:
+    if opposite:
         op = {'K': 'M', 'M': 'K'}[op]
     if op == 'K':
         return not_k_literal(modal.literal)
@@ -200,10 +200,10 @@ def functional_term(symbol, terms=None):
     return model.FunctionalTerm(symbol=symbol, arguments=terms)
 
 
-def guessing_term(modal):
-    literal = modal_to_literal(modal)
-    arguments = getattr(literal, 'arguments', None)
-    return functional_term(literal.symbol, arguments)
+def guessing_term(modal, opposite=False):
+    atom_ = guessing_atom(modal, opposite=opposite)
+    arguments = getattr(atom_, 'arguments', None)
+    return functional_term(atom_.symbol, arguments)
 
 
 def input_rules():
@@ -270,18 +270,18 @@ def _guessing_rules(modals, semantics, optimize):
         )
         yield rule(
             disjunction([
-                in_atom(modal_to_literal(modal)),
-                out_atom(modal_to_literal(modal))
+                in_atom(guessing_term(modal)),
+                out_atom(guessing_term(modal))
             ]), [datom]
         )
         if not optimize:
             continue
         yield rule(
-            in_atom(modal_to_literal(modal)), [datom, condition[modal.op]]
+            in_atom(guessing_term(modal)), [datom, condition[modal.op]]
         )
         yield rule(
-            in_atom(modal_to_literal(modal)),
-            [datom, out_atom(modal_to_literal(modal, switch_mode=True))]
+            in_atom(guessing_term(modal)),
+            [datom, out_atom(guessing_term(modal, opposite=True))]
         )
 
 
@@ -323,18 +323,18 @@ def check_rules(modals, path):
 def guessing_assignment_rules(modals, semantics):
     for modal in modals:
         literal = modal.literal
-        modal_literal = modal_to_literal(modal)
+        head = guessing_atom(modal)
         in_guess = in_atom(guessing_term(modal))
         out_guess = out_atom(guessing_term(modal))
-        yield rule(modal_literal, in_guess)
+        yield rule(head, in_guess)
         if modal.op == 'K':
-            yield rule(modal_literal, [out_guess, not_(literal)])
+            yield rule(head, [out_guess, not_(literal)])
         elif modal.op == 'M':
             if semantics is KAHL_SEMANTICS:
                 not_l = not_atom(literal.symbol, literal.arguments)
-                yield rule(modal_literal, [out_guess, not_(not_l)])
+                yield rule(head, [out_guess, not_(not_l)])
                 yield rule(not_l, [out_guess, not_(literal)])
             else:
-                yield rule(modal_literal, [out_guess, literal])
+                yield rule(head, [out_guess, literal])
         else:
             assert False

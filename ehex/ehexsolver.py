@@ -307,7 +307,7 @@ class Context:
         def rules():
             for i, wv in enumerate(world_views):
                 for literal in wv:
-                    term = fragments.modal_to_literal(literal)
+                    term = fragments.guessing_term(literal)
                     name = '"w{}@{}"'.format(i + 1, level)
                     yield fragments.fact(fragments.atom(symbol, [name, term]))
             yield from fragments.check_solved_rules()
