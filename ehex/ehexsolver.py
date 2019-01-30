@@ -239,8 +239,11 @@ class Context:
         rules = []
         for literal in literals:
             rules.append(
-                fragments.
-                fact(fragments.out_atom(fragments.not_k_literal(literal)))
+                fragments.constraint(
+                    fragments.not_(
+                        fragments.out_atom(fragments.not_k_literal(literal))
+                    )
+                )
             )
         self.src['k_constraints'] = render(fragments.program(rules))
 
@@ -257,8 +260,9 @@ class Context:
         for literal in literals:
             rules.append(
                 fragments.constraint(
-                    fragments.
-                    not_(fragments.out_atom(fragments.m_literal(literal)))
+                    fragments.not_(
+                        fragments.out_atom(fragments.m_literal(literal))
+                    )
                 )
             )
         self.src['m_constraints'] = render(fragments.program(rules))
@@ -340,12 +344,14 @@ class Solver:
             with options.guessing_out.open('w') as guessing_file:
                 guessing_file.write(src['gc_rules'])
 
-        context.compute_cautious_consequences(options)
-        context.min_level += len(context.literals['consequences']['cautious'])
-        context.compute_brave_consequences(options)
-        context.min_level += len(context.literals['ground_m_atoms']) - len(
-            context.literals['consequences']['brave']
-        )
+        if options.enable_queries:
+            context.compute_cautious_consequences(options)
+            context.compute_brave_consequences(options)
+            context.min_level += (
+                len(context.literals['consequences']['cautious'])
+                + len(context.literals['ground_m_atoms'])
+                - len(context.literals['consequences']['brave'])
+            )
 
         for level in range(context.min_level, context.max_level + 1):
             context.set_src(level, render(fragments.level_constraint(level)))
@@ -355,32 +361,32 @@ class Solver:
                 if src['solved_constraints']:
                     context.append_src(level, src['solved_constraints'])
 
-            context.compute_cautious_consequences(
-                options, extra_src=src[level], key=level
-            )
-            if context.literals['consequences'][level]['cautious'] is None:
-                continue
+            if options.enable_queries:
+                context.compute_cautious_consequences(
+                    options, extra_src=src[level], key=level
+                )
+                if context.literals['consequences'][level]['cautious'] is None:
+                    continue
 
-            context.compute_brave_consequences(
-                options, extra_src=src[level], key=level
-            )
-            if context.literals['consequences'][level]['brave'] is None:
-                continue
+                context.compute_brave_consequences(
+                    options, extra_src=src[level], key=level
+                )
+                if context.literals['consequences'][level]['brave'] is None:
+                    continue
 
-            check_level = len(
-                context.literals['consequences'][level]['cautious']
-            )
-            check_level += len(context.literals['ground_m_atoms']) - len(
-                context.literals['consequences'][level]['brave']
-            )
-            if level < check_level:
-                continue
+                check_level = (
+                    len(context.literals['consequences'][level]['cautious'])
+                    + len(context.literals['ground_m_atoms'])
+                    - len(context.literals['consequences'][level]['brave'])
+                )
+                if level < check_level:
+                    continue
 
-            context.render_k_constraints(level)
-            context.render_m_constraints(level)
-            context.append_src(
-                level, src['k_constraints'], src['m_constraints']
-            )
+                context.render_k_constraints(level)
+                context.render_m_constraints(level)
+                context.append_src(
+                    level, src['k_constraints'], src['m_constraints']
+                )
 
             if options.debug:
                 level_path = options.level_out.with_suffix(
