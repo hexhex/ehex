@@ -4,8 +4,8 @@ from subprocess import (Popen, PIPE, DEVNULL)
 
 
 def solve(
-    *files, debug=False, print_errors=None, text='', models=0, quiet=None,
-    **options
+    *files, mode=None, debug=False, print_errors=None, src='', models=0,
+    quiet=None, **options
 ):
     if print_errors is None:
         print_errors = bool(files)
@@ -20,6 +20,7 @@ def solve(
         'outf': 1,
         'models': models,
         'quiet': quiet,
+        'mode': mode,
     })
 
     flags = {name for name, value in options.items() if value is True}
@@ -41,10 +42,7 @@ def solve(
     ]
     cmd += files
     if debug:
-        print(
-            '{} {}'.format(cmd[0], ' \\\n  '.join(cmd[1:])),
-            file=sys.stderr
-        )
+        print('{} {}'.format(cmd[0], ' \\\n  '.join(cmd[1:])), file=sys.stderr)
 
     proc = Popen(
         cmd,
@@ -55,7 +53,11 @@ def solve(
     )
 
     with proc.stdin as stdin:
-        stdin.write(text)
+        stdin.write(src)
+
+    if mode == 'gringo':
+        yield from proc.stdout
+        return
 
     ignore = re.compile(r'^[A-Z%]').match
 
