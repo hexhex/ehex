@@ -467,14 +467,16 @@ class HEXAnswerSetSemantics(object):
         return ast
 
 
-def main(filename, start='start', **kwargs):
+def main(filename, start=None, **kwargs):
+    if start is None:
+        start = 'start'
     if not filename or filename == '-':
         text = sys.stdin.read()
     else:
         with open(filename) as f:
             text = f.read()
     parser = HEXAnswerSetParser()
-    return parser.parse(text, start=start, filename=filename, **kwargs)
+    return parser.parse(text, rule_name=start, filename=filename, **kwargs)
 
 
 if __name__ == '__main__':

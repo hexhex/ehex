@@ -1,0 +1,7 @@
+@@grammar :: ASP
+#include :: "asp-core.ebnf"
+
+(*   ASP Input Language    *)
+(*   Based on ASP-Core-2   *)
+
+@override OR = '|' | ';';

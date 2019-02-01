@@ -24,7 +24,7 @@ from tatsu.util import re, generic_main  # noqa
 KEYWORDS = {}  # type: ignore
 
 
-class EHEXBuffer(Buffer):
+class ASPBuffer(Buffer):
     def __init__(
         self,
         text,
@@ -36,7 +36,7 @@ class EHEXBuffer(Buffer):
         namechars='',
         **kwargs
     ):
-        super(EHEXBuffer, self).__init__(
+        super(ASPBuffer, self).__init__(
             text,
             whitespace=whitespace,
             nameguard=nameguard,
@@ -48,7 +48,7 @@ class EHEXBuffer(Buffer):
         )
 
 
-class EHEXParser(Parser):
+class ASPParser(Parser):
     def __init__(
         self,
         whitespace=re.compile('[ \\t\\n]+'),
@@ -60,12 +60,12 @@ class EHEXParser(Parser):
         parseinfo=True,
         keywords=None,
         namechars='',
-        buffer_class=EHEXBuffer,
+        buffer_class=ASPBuffer,
         **kwargs
     ):
         if keywords is None:
             keywords = KEYWORDS
-        super(EHEXParser, self).__init__(
+        super(ASPParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
             comments_re=comments_re,
@@ -456,13 +456,7 @@ class EHEXParser(Parser):
 
     @tatsumasu('StrongNegation')
     def _strong_negated_atom_(self):  # noqa
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._MINUS_()
-                with self._option():
-                    self._token('¬')
-                self._error('no available options')
+        self._MINUS_()
         self.name_last_node('op')
         self._atom_()
         self.name_last_node('atom')
@@ -477,14 +471,18 @@ class EHEXParser(Parser):
             self._NOT_()
         self._ID_()
 
-    @tatsumasu()
+    @tatsumasu('BinaryRelation')
     def _builtin_atom_(self):  # noqa
-        with self._choice():
-            with self._option():
-                self._arithmetic_atom_()
-            with self._option():
-                self._binary_relation_()
-            self._error('no available options')
+        self._term_()
+        self.name_last_node('left')
+        self._relational_op_()
+        self.name_last_node('op')
+        self._term_()
+        self.name_last_node('right')
+        self.ast._define(
+            ['left', 'op', 'right'],
+            []
+        )
 
     @tatsumasu('Conjunction')
     def _extended_literals_(self):  # noqa
@@ -509,8 +507,6 @@ class EHEXParser(Parser):
             with self._option():
                 self._default_negated_literal_()
             with self._option():
-                self._modal_literal_()
-            with self._option():
                 self._classical_literal_()
             with self._option():
                 self._builtin_atom_()
@@ -522,8 +518,6 @@ class EHEXParser(Parser):
         self.name_last_node('op')
         with self._group():
             with self._choice():
-                with self._option():
-                    self._modal_literal_()
                 with self._option():
                     self._classical_literal_()
                 with self._option():
@@ -737,14 +731,10 @@ class EHEXParser(Parser):
 
     @tatsumasu()
     def _ID_(self):  # noqa
-        with self._ifnot():
-            self._token('aux__')
         self._pattern(r'[a-z][a-zA-Z0-9_]*')
 
     @tatsumasu()
     def _VARIABLE_(self):  # noqa
-        with self._ifnot():
-            self._token('AUX__')
         self._pattern(r'[A-Z][a-zA-Z0-9_]*')
 
     @tatsumasu('str')
@@ -785,7 +775,7 @@ class EHEXParser(Parser):
             with self._option():
                 self._token('|')
             with self._option():
-                self._token('v')
+                self._token(';')
             self._error('no available options')
 
     @tatsumasu()
@@ -794,12 +784,7 @@ class EHEXParser(Parser):
 
     @tatsumasu()
     def _CONS_(self):  # noqa
-        with self._choice():
-            with self._option():
-                self._token(':-')
-            with self._option():
-                self._token('←')
-            self._error('no available options')
+        self._token(':-')
 
     @tatsumasu()
     def _WCONS_(self):  # noqa
@@ -906,79 +891,8 @@ class EHEXParser(Parser):
         self._pattern(r'[zs]')
         self._token('e')
 
-    @tatsumasu('Atom')
-    def _arithmetic_atom_(self):  # noqa
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._PLUS_()
-                with self._option():
-                    self._MINUS_()
-                with self._option():
-                    self._TIMES_()
-                with self._option():
-                    self._DIV_()
-                with self._option():
-                    self._token('#int')
-                self._error('no available options')
-        self.name_last_node('symbol')
-        with self._optional():
-            self._PAREN_OPEN_()
-            with self._optional():
-                self._terms_()
-                self.name_last_node('arguments')
-            self._PAREN_CLOSE_()
-        self.ast._define(
-            ['arguments', 'symbol'],
-            []
-        )
 
-    @tatsumasu('BinaryRelation')
-    def _binary_relation_(self):  # noqa
-        self._term_()
-        self.name_last_node('left')
-        self._relational_op_()
-        self.name_last_node('op')
-        self._term_()
-        self.name_last_node('right')
-        self.ast._define(
-            ['left', 'op', 'right'],
-            []
-        )
-
-    @tatsumasu()
-    def _modal_literal_(self):  # noqa
-        with self._choice():
-            with self._option():
-                self._k_modal_()
-            with self._option():
-                self._m_modal_()
-            self._error('no available options')
-
-    @tatsumasu('KModal')
-    def _k_modal_(self):  # noqa
-        self._token('K')
-        self.name_last_node('op')
-        self._classical_literal_()
-        self.name_last_node('literal')
-        self.ast._define(
-            ['literal', 'op'],
-            []
-        )
-
-    @tatsumasu('MModal')
-    def _m_modal_(self):  # noqa
-        self._token('M')
-        self.name_last_node('op')
-        self._classical_literal_()
-        self.name_last_node('literal')
-        self.ast._define(
-            ['literal', 'op'],
-            []
-        )
-
-
-class EHEXSemantics(object):
+class ASPSemantics(object):
     def start(self, ast):  # noqa
         return ast
 
@@ -1243,21 +1157,6 @@ class EHEXSemantics(object):
     def MAXIMIZE(self, ast):  # noqa
         return ast
 
-    def arithmetic_atom(self, ast):  # noqa
-        return ast
-
-    def binary_relation(self, ast):  # noqa
-        return ast
-
-    def modal_literal(self, ast):  # noqa
-        return ast
-
-    def k_modal(self, ast):  # noqa
-        return ast
-
-    def m_modal(self, ast):  # noqa
-        return ast
-
 
 def main(filename, start=None, **kwargs):
     if start is None:
@@ -1267,7 +1166,7 @@ def main(filename, start=None, **kwargs):
     else:
         with open(filename) as f:
             text = f.read()
-    parser = EHEXParser()
+    parser = ASPParser()
     return parser.parse(text, rule_name=start, filename=filename, **kwargs)
 
 
@@ -1275,7 +1174,7 @@ if __name__ == '__main__':
     import json
     from tatsu.util import asjson
 
-    ast = generic_main(main, EHEXParser, name='EHEX')
+    ast = generic_main(main, ASPParser, name='ASP')
     print('AST:')
     print(ast)
     print()

@@ -1,11 +1,11 @@
-MODULES = ehex.py model.py answerset.py
+MODULES = asp.py ehex.py model.py answerset.py
 
 all: $(MODULES)
 	
-%.py: %.ebnf
+%.py: %.ebnf asp-core.ebnf
 	tatsu --generate-parser --outfile $@ $<
 
-model.py: ehex.ebnf
+model.py: ehex.ebnf asp-core.ebnf
 	tatsu --object-model --outfile $@ $<
 
 clean:
