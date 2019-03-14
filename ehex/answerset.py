@@ -15,63 +15,59 @@ _parse = HEXAnswerSetParser(
 parse_cache = {}
 
 
-def tokenize_nested(text):
+PAT = re.compile(r'("(?:\\"|[^"])*"|[()])')
+SEP = re.compile(r'[{,.}]|\s+')
+
+
+def nested_split(text):
     """Adapted from  http://stackoverflow.com/a/14715850"""
-    left = r'[(]'
-    right = r'[)]'
-    sep = r'"(?:\\"|[^"])*"|[{,.}]|\s+'
-    pat = re.compile(r'({}|{}|{})'.format(left, right, sep))
-    tokens = pat.split(text)
-    left = re.compile(left).match
-    right = re.compile(right).match
-    sep = re.compile(sep).match
     stack = [[]]
-    for x in tokens:
-        if x and x.startswith('"'):
+    for x in PAT.split(text):
+        if x.startswith('"'):
             stack[-1].append(x)
-            continue
-        if not x or sep(x):
-            continue
-        if left(x):
+        elif x == '(':
             # Nest a new list inside the current list
             current = []
             stack[-1].append(current)
             stack.append(current)
-        elif right(x):
+        elif x == ')':
             stack.pop()
             if not stack:
                 raise ValueError('opening bracket is missing')
         else:
-            stack[-1].append(x)
+            stack[-1].extend(s for s in SEP.split(x) if s)
     if len(stack) > 1:
         raise ValueError('closing bracket is missing')
     return stack.pop()
 
 
-def flatten(tokens):
-    tokens = [
-        '(' + flatten(token) + ')'
-        if isinstance(token, list) else ',' + token
-        for token in tokens
-    ]
-    return ''.join(tokens)[1:]
+def _flatten(tokens):
+    first = True
+    for token in tokens:
+        if isinstance(token, list):
+            yield '('
+            yield from _flatten(token)
+            yield ')'
+        else:
+            if first:
+                first = False
+            else:
+                yield ','
+            yield token
 
 
 def parse_literal(token):
-    cached = parse_cache.get(token)
-    if cached is not None:
-        return cached
-    literal = _parse(token, rule_name='literal')
-    parse_cache[token] = literal
-    parse_cache[literal] = token
-    return literal
-
-
-def unparse_literal(literal):
-    return parse_cache[literal]
+    try:
+        return parse_cache[token]
+    except KeyError:
+        literal = _parse(token, rule_name='literal')
+        parse_cache[token] = literal
+        return literal
 
 
 def render_literal(literal):
+    if isinstance(literal, str):
+        return literal
     try:
         return render_cache[literal]
     except KeyError:
@@ -81,36 +77,42 @@ def render_literal(literal):
 
 
 def render(answer_set):
-    rendered = sorted(render_literal(lit) for lit in answer_set)
-    return '{' + ', '.join(rendered) + '}'
+    rendered = [render_literal(lit) for lit in answer_set]
+    return '{{{}}}'.format(', '.join(sorted(rendered)))
 
 
 def generate_tokens(stream):
     for ans in stream:
-        yield tokenize_nested(ans)
+        yield nested_split(ans)
 
 
 def generate_literals(tokens):
     it = iter(tokens)
-    predicate = next(it)
+    try:
+        predicate = next(it)
+    except StopIteration:
+        return
     for token in it:
         if isinstance(token, list):
-            yield flatten([predicate, token])
-            predicate = next(it)
+            yield ''.join(_flatten((predicate, token)))
+            try:
+                predicate = next(it)
+            except StopIteration:
+                return
         else:
             yield predicate
             predicate = token
     yield predicate
 
 
-def generate_model(literals):
+def generate_models(literals):
     for literal in literals:
         yield parse_literal(literal)
 
 
 def parse(stream):
     for tokens in generate_tokens(stream):
-        yield generate_model(generate_literals(tokens))
+        yield generate_models(generate_literals(tokens))
 
 
 def render_result(stream):

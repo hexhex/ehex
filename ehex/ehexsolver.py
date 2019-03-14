@@ -1,65 +1,102 @@
+import re
 import sys
 from ehex.hexsolver import solve as dlvhex
 from ehex.clingo import solve as clingo
 from ehex.codegen import EHEXCodeGenerator
+from ehex.utils import flatten
 
 import ehex
-from ehex import fragments
+from ehex import fragments, answerset, aspif
 from ehex.parser.model import (
     EHEXModelBuilderSemantics as Semantics,
     StrongNegation,
-    ConstantTerm,
     Modal,
     DefaultNegation,
 )
-from ehex.parser.ehex import EHEXParser as Parser
+from ehex.parser.ehex import EHEXParser
 from ehex.translation import (
+    GroundingResultWalker,
+    OverApproximationWalker,
     RewriteStrongNegationWalker,
     TranslationWalker,
-    OverApproximationWalker,
 )
-from ehex.filter import Modals
+from ehex.filter import ClassicalLiterals
 
-import ehex.answerset as answerset
+_render = EHEXCodeGenerator().render
 
-render = EHEXCodeGenerator().render
+
+def render(fragment):
+    return '\n\n'.join(_render(item) for item in flatten(fragment))
+
+
+def nkey(obj):
+    if not isinstance(obj, str):
+        obj = render(obj)
+    return (*answerset.generate_literals(answerset.nested_split(obj)),)[-2:]
 
 
 class Context:
 
+    ground_modals = None
+    brave_modals = None
+    cautious_modals = None
+    filter_predicates = None
+
     def __init__(self, options):
         self.fragments = {}
-        self.literals = {"consequences": {}}
-        self.src = src = {}
+        self.src = {}
+
         self.parse_input(options)
-        self.create_modal_literals()
-        self.compute_envelope(options)
-        self.create_guessing(options)
-        self.create_check(options)
-        self.create_reduct(options)
-        self.create_filter_predicates()
-        self.create_ground_modals()
-        self.render_fragments(self.fragments)
+        reduct_modals = self.create_reduct(options)
+        self.create_guessing(options, reduct_modals)
+        self.create_checking(options, reduct_modals)
+
+        envelope, envelope_modals = self.compute_envelope(options)
+        self._set_ground_modals(envelope_modals)
+        self.create_filter_predicates(envelope)
+
+        facts = {
+            'domain': {*self.ground_modals},
+            'in': set(),
+            'out': set(),
+            'asp': set()
+        }
+        self.update_fragments(options, facts)
+
+        if options.enable_queries:
+            cautious = self.compute_consequences('cautious', options)
+            brave = self.compute_consequences('brave', options)
+            facts['out'] |= self.create_k_facts(cautious)
+            facts['out'] |= self.create_m_facts(brave)
+            facts['domain'] -= {*facts['out']}
+            self.update_fragments(options, facts)
+
         if options.planning_mode:
-            self.append_src(
-                'guessing_rules',
-                ':- aux__IN(aux__NOT_K_goal).',
-                ':- aux__OUT(aux__M_goal).',
-            )
-        self.set_src('lp_program', src['reduct_program'], src['guessing_rules'])
-        self.set_src('gc_rules', src['guessing_rules'], src['check_rules'])
-        self.set_src('solved_constraints')
-        self.create_show_k_src()
-        self.create_show_m_src()
-        self.min_level = 0
-        max_level = len(self.literals['modal_domains'])
+            facts['in'] |= {nkey('M goal')}
+            facts['out'] |= {nkey('not K goal')}
+            self.update_fragments(options, facts)
+
+        if options.grounder == 'asp':
+            asp_modals, asp_facts = self.asp_grounding(options)
+            facts['domain'] &= asp_modals
+            facts['asp'] |= asp_facts
+            # facts['in'] |= asp_facts
+            self.update_fragments(options, facts)
+
+        self.facts = facts
+        self.set_src('world_views.fragment', '')
+        max_level = len(self.ground_modals) - len(facts['in'] | facts['asp'])
         if options.max_level is not None:
             max_level = min(max_level, options.max_level)
         self.max_level = max_level
+        if options.enable_queries:
+            self.min_level = len(facts['out'])
+        else:
+            self.min_level = 0
 
     @staticmethod
     def _parse_program(program_path):
-        parser = Parser(parseinfo=False)
+        parser = EHEXParser(parseinfo=False)
         with open(str(program_path)) as program_file:
             text = program_file.read()
         parsed = parser.parse(
@@ -67,234 +104,275 @@ class Context:
         )
         return RewriteStrongNegationWalker().walk(parsed)
 
-    @staticmethod
-    def _extract_modals(modal_domains, mode):
-        for atom in modal_domains:
-            op = atom.arguments[0].ast
-            if op != mode:
-                continue
-            model = atom.arguments[1]
-            if isinstance(model, ConstantTerm):
-                model = fragments.atom(model.ast)
-            yield model
-
-    @staticmethod
-    def undo_negation_symbol(item):
-        return render(item).replace('¬', 'aux__NEG_')
-
-    @staticmethod
-    def create_show_directives(atoms):
-        for atom in atoms:
-            num = len(getattr(atom, 'arguments', []))
-            yield '#show {}/{}.'.format(getattr(atom, 'symbol', atom.ast), num)
-
     def parse_input(self, options):
         self.fragments['ehex_program'] = self._parse_program(options.ehex_in)
 
-    def create_modal_literals(self):
-        self.literals.update({
-            'modals': Modals(self.fragments['ehex_program'])
-        })
-
-    def create_guessing(self, options):
-        self.fragments['guessing_rules'] = fragments.program(
-            fragments.guessing_rules(
-                self.literals['modals'], self.literals['modal_domains'],
-                semantics=options.semantics, optimize=options.optimize_guessing
-            )
-        )
-
-    def create_check(self, options):
-        self.fragments['check_rules'] = fragments.program(
-            fragments.check_rules(self.literals['modals'], options.reduct_out)
-        )
-
     def create_reduct(self, options):
-        t_program = TranslationWalker().walk(self.fragments['ehex_program'])
-        rules = list(t_program.statements)
-        rules += list(
-            fragments.guessing_assignment_rules(
-                self.literals['modals'], options.semantics
-            )
+        walker = TranslationWalker(options.semantics)
+        self.fragments['generic_reduct'] = walker.walk(
+            self.fragments['ehex_program']
         )
-        self.fragments['reduct_program'] = fragments.program(rules)
+        return walker.modals
 
-    def render_fragments(self, fragments_map):
-        for key, fragment in fragments_map.items():
-            self.src[key] = render(fragment)
+    def create_guessing(self, options, reduct_modals):
+        self.fragments['guessing_rules'] = fragments.guessing_rules(
+            reduct_modals, options.optimize_guessing
+        )
+        if options.optimize_guessing:
+            self.fragments['guessing_hints'] = fragments.guessing_hints(
+                reduct_modals,
+                semantics=options.semantics,
+            )
 
     def compute_envelope(self, options):
         oa_walker = OverApproximationWalker().walk
-        envelope_src = render(oa_walker(self.fragments['ehex_program']))
+        self.set_src(
+            options.envelope_out.name,
+            render(oa_walker(self.fragments['ehex_program']))
+        )
         if options.debug:
             with options.envelope_out.open('w') as envelope_file:
-                envelope_file.write(envelope_src)
-            print('Computing positive envelope and terms:', file=sys.stderr)
+                envelope_file.write(self.src[options.envelope_out.name])
+            print('Computing positive envelope:', file=sys.stderr)
             results = clingo(
                 str(options.envelope_out), debug=True, print_errors=True
             )
         else:
-            results = clingo(text=envelope_src)
-        parse = answerset.parse
-        envelope = set(next(parse(results)))
-        modal_domains = {
+            results = clingo(src=self.src[options.envelope_out.name])
+        envelope = set(
+            GroundingResultWalker().walk(next(answerset.parse(results)))
+        )
+        ground_modals = {
             literal
-            for literal in envelope
-            if getattr(literal, 'symbol', '').startswith('aux__DOM')
+            for literal in envelope if isinstance(literal, Modal)
         }
-        envelope -= modal_domains
+        envelope -= ground_modals
+
         if options.debug:
             print('Envelope:', answerset.render(envelope), file=sys.stderr)
             print(
-                'Modal domains:',
-                answerset.render(modal_domains), file=sys.stderr
+                'Ground modals:', answerset.render(ground_modals),
+                file=sys.stderr
             )
-        self.literals.update({
-            'envelope': envelope,
-            'modal_domains': modal_domains
-        })
+        return envelope, ground_modals
 
-    def create_filter_predicates(self):
+    def update_fragments(self, options, facts):
+        domain_modals = facts['domain']
+        self.create_guessing_domain(domain_modals)
+        self.create_guessing_facts(in_facts=facts['in'], out_facts=facts['out'])
+        if facts['asp']:
+            asp_facts = {
+                fact: fragments.guessing_atom(self.ground_modals[fact])
+                for fact in facts['asp']
+            }
+            self.fragments['asp_facts'] = [
+                fragments.fact(asp_facts[fact])
+                for fact in sorted(asp_facts)
+            ]
+
+
+        self.render_fragments(options)
+        if options.enable_queries:
+            self.create_show_cautious(self.cautious_modals)
+            self.create_show_brave(self.brave_modals)
+
+    def update_level(self, options, level, out_facts):
+        self.create_guessing_facts(out_facts=out_facts, level=level)
+        self.render_fragments(options, update_src=False)
+
+    def create_guessing_domain(self, domain_modals):
+        modals = [self.ground_modals[modal] for modal in sorted(domain_modals)]
+        self.fragments['guessing_domain'] = fragments.domain_facts(modals)
+
+    def create_guessing_facts(self, in_facts=(), out_facts=(), level=None):
+        if not (in_facts or out_facts):
+            return
+        key = 'guessing_facts'
+        if level is not None:
+            key += '.{}'.format(level)
+        in_facts = [
+            fragments.in_atom(fragments.guessing_term(self.ground_modals[f]))
+            for f in sorted(in_facts)
+        ]
+        out_facts = [
+            fragments.out_atom(fragments.guessing_term(self.ground_modals[f]))
+            for f in sorted(out_facts)
+        ]
+        self.fragments[key] = [fragments.fact(f) for f in in_facts + out_facts]
+
+    def asp_grounding(self, options):
+        out = options.ehex_in.with_suffix('.grounding.lp')
+        self.set_src(
+            out.name, self.src['intermediate.lp'],
+            self.src.get('guessing_hints.fragment', ''),
+        )
+        if options.debug:
+            out = options.ehex_in.with_suffix('.grounding.lp')
+            with out.open('w') as grounding_file:
+                grounding_file.write(self.src[out.name])
+            print('Grounding the generic reduct:', file=sys.stderr)
+            result = clingo(
+                str(out), mode='gringo', output='intermediate', debug=True,
+                print_errors=True
+            )
+        else:
+            result = clingo(
+                src=self.src[out.name], mode='gringo', output='intermediate'
+            )
+        MODAL = re.compile(
+            '{}({}|{})_(?:({})_)?(.*)'.format(
+                ehex.AUX_MARKER, ehex.K_PREFIX, ehex.M_PREFIX, ehex.SNEG_PREFIX
+            )
+        )
+        get_symbol = {'NOT_K': 'K', 'NEG': '-'}.get
+
+        def repl(s):
+            match = MODAL.match(s)
+            if not match:
+                return None
+            m, neg, lit = match.groups()
+            m = get_symbol(m, m)
+            neg = get_symbol(neg, '')
+            return nkey('{} {}{}'.format(m, neg, lit))
+
+        facts, modals = aspif.relevant(result, repl)
+        return {*modals}, {*facts}
+
+    def create_checking(self, options, reduct_modals):
+        self.fragments['checking_rules'] = fragments.checking_rules(
+            reduct_modals, options.reduct_out
+        )
+
+    def render_fragments(self, options, update_src=True):
+        fragments_map = self.fragments
+        for key in [*fragments_map]:
+            fragment = fragments_map.pop(key)
+            self.set_src('{}.fragment'.format(key), render(fragment))
+        if not update_src:
+            return
+        self.set_src(
+            'intermediate.lp',
+            self.src['generic_reduct.fragment'],
+            self.src.get('asp_facts.fragment', ''),
+            self.src['guessing_rules.fragment'],
+            self.src['guessing_domain.fragment'],
+            self.src.get('guessing_facts.fragment', ''),
+        )
+        self.set_src(
+            options.reduct_out.name,
+            self.src['generic_reduct.fragment'],
+            self.src.get('asp_facts.fragment', ''),
+        )
+        self.set_src(
+            options.guessing_out.name,
+            self.src['guessing_rules.fragment'],
+            self.src['guessing_domain.fragment'],
+            self.src.get('guessing_facts.fragment', ''),
+            self.src['checking_rules.fragment'],
+        )
+        if options.optimize_guessing:
+            self.append_src(
+                options.guessing_out.name,
+                self.src['guessing_hints.fragment']
+            )
+
+    @staticmethod
+    def create_show_directives(modals):
+        rewrite = RewriteStrongNegationWalker().walk
+        directives = {
+            '#show {}/{}.'.format(atom.symbol, len(atom.arguments or ()))
+            for atom in rewrite(ClassicalLiterals(modals))
+        }
+        return sorted(directives)
+
+    def create_filter_predicates(self, envelope):
         predicates = {  # TODO: use filter from command line
             fragments.aux_name(literal.atom.symbol, ehex.SNEG_PREFIX)
             if isinstance(literal, StrongNegation)
             else literal.symbol
-            for literal in self.literals['envelope']
+            for literal in envelope
         } | {fragments.aux_name(ehex.IN_ATOM)}
         if not predicates:
             predicates = {'none'}
-        self.literals['filter_predicates'] = predicates
+        self.filter_predicates = predicates
 
-    def create_ground_modals(self):
-        modal_domains = self.literals['modal_domains']
-        self.literals.update({
-            'ground_k_atoms': {
-                self.undo_negation_symbol(model): model
-                for model in
-                self._extract_modals(modal_domains, 'k')
-            },
-            'ground_m_atoms': {
-                render(model): model
-                for model in
-                self._extract_modals(modal_domains, 'm')
-            }
-        })
+    def _set_ground_modals(self, modals):
+        ground_modals = {}
+        cautious_modals = {}
+        brave_modals = {}
+        for modal in modals:
+            key = nkey(modal)
+            ground_modals[key] = modal
+            if modal.op == 'K':
+                cautious_modals[key] = modal
+            else:
+                assert modal.op == 'M'
+                brave_modals[key] = modal
+        self.ground_modals = ground_modals
+        self.cautious_modals = cautious_modals
+        self.brave_modals = brave_modals
 
-    def compute_cautious_consequences(self, options, extra_src='', key=None):
-        enum_mode = 'cautious'
-        target = self.literals['consequences']
-        if key is not None:
-            target[key] = target.get(key, {})
-            target = target[key]
-        if not self.literals['ground_k_atoms']:
-            target[enum_mode] = {}
-            return
-        src = self.src['show_k_program'] + extra_src
-        result = clingo(
-            debug=options.debug, print_errors=options.debug,
-            text=src, enum_mode=enum_mode, project='show'
-        )
+    def compute_consequences(self, enum_mode, options, extra_src='', key=None):
+        if not getattr(self, '{}_modals'.format(enum_mode)):
+            return {}
+        src_key = '{}.lp'.format(enum_mode)
+        src = self.src[src_key]
+        if extra_src:
+            src += '\n' + extra_src
+        clingo_args = {
+            'debug': options.debug,
+            'print_errors': options.debug,
+            'enum_mode': enum_mode,
+            'project': 'show'
+        }
+        if options.debug:
+            out = options.ehex_in.with_suffix('.{}'.format(src_key))
+            if key is not None:
+                out = out.with_suffix('.{}.lp'.format(key))
+            with out.open('w') as out_file:
+                out_file.write(src)
+            result = clingo(str(out), **clingo_args)
+        else:
+            result = clingo(src=src, **clingo_args)
         for ans in answerset.parse(result):
-            target[enum_mode] = {
-                self.undo_negation_symbol(item): item
-                for item in ans
-            }
-            for key in (
-                target[enum_mode].keys() -
-                self.literals['ground_k_atoms'].keys()
-            ):
-                del target[enum_mode][key]
-            return
-        target[enum_mode] = None
+            return [nkey(item) for item in ans]
+        return None
 
-    def compute_brave_consequences(self, options, key=None, extra_src=''):
-        enum_mode = 'brave'
-        target = self.literals['consequences']
-        if key is not None:
-            target[key] = target.get(key, {})
-            target = target[key]
-        if not self.literals['ground_m_atoms']:
-            target[enum_mode] = {}
-            return
-        src = self.src['show_m_program'] + extra_src
-        result = clingo(
-            debug=options.debug, print_errors=options.debug,
-            text=src, enum_mode=enum_mode, project='show'
-        )
-        for ans in answerset.parse(result):
-            target[enum_mode] = {
-                self.undo_negation_symbol(item): item
-                for item in ans
-            }
-            for key in (
-                target[enum_mode].keys() -
-                self.literals['ground_m_atoms'].keys()
-            ):
-                del target[enum_mode][key]
-            return
-        target[enum_mode] = None
+    def create_k_facts(self, consequences):
+        return {*self.cautious_modals} & {('K', *key) for key in consequences}
 
-    def render_k_facts(self, level):
-        literals = self.literals['consequences'][level]['cautious'].values()
-        rules = []
-        for literal in literals:
-            rules.append(
-                fragments.fact(
-                    fragments.out_atom(fragments.not_k_literal(literal))
-                )
-            )
-        self.src['k_facts'] = render(fragments.program(rules))
-
-    def render_m_facts(self, level):
-        keys = (
-            self.literals['ground_m_atoms'].keys() -
-            self.literals['consequences'][level]['brave'].keys()
-        )
-        literals = [
-            self.literals['ground_m_atoms'][key]
-            for key in keys
-        ]
-        rules = []
-        for literal in literals:
-            rules.append(
-                fragments.fact(
-                    fragments.out_atom(fragments.m_literal(literal))
-                )
-            )
-        self.src['m_facts'] = render(fragments.program(rules))
+    def create_m_facts(self, consequences):
+        return {*self.brave_modals} - {('M', *key) for key in consequences}
 
     def set_src(self, name, *src):
-        sep = '\n\n%%% {} %%%\n\n'.format(name)
-        self.src[name] = sep.join(src)
+        self.src[name] = '%%% {} %%%\n'.format(name)
+        self.append_src(name, *src)
 
     def append_src(self, name, *src):
-        self.set_src(name, self.src[name], *src)
+        src = '\n\n'.join([s.strip() for s in src if s.strip()])
+        if src:
+            self.src[name] += '\n{}\n'.format(src)
 
-    def create_show_k_src(self):
-        ground_k_atoms = self.literals['ground_k_atoms']
-        if not ground_k_atoms:
-            self.set_src('show_k_program')
+    def create_show_cautious(self, cautious_modals):
+        if not cautious_modals:
+            self.set_src('cautious.lp', '% no K atoms')
             return
-
-        directives = self.create_show_directives(
-            ground_k_atoms.values()
+        directives = self.create_show_directives(cautious_modals.values())
+        self.set_src(
+            'cautious.lp', '\n'.join(directives),
+            self.src['intermediate.lp']
         )
-        self.set_src('show_k_program', *set(directives))
-        self.append_src('show_k_program', self.src['lp_program'])
 
-    def create_show_m_src(self):
-        ground_m_atoms = self.literals['ground_m_atoms']
-        if not ground_m_atoms:
-            self.set_src('show_m_program')
+    def create_show_brave(self, brave_modals):
+        if not brave_modals:
+            self.set_src('brave.lp', '% no M atoms')
             return
-
-        directives = self.create_show_directives(
-            ground_m_atoms.values()
+        directives = self.create_show_directives(brave_modals.values())
+        self.set_src(
+            'brave.lp', '\n'.join(directives), self.src['intermediate.lp']
         )
-        self.set_src('show_m_program', *set(directives))
-        self.append_src('show_m_program', self.src['lp_program'])
 
-    def render_solved_constraints(self, world_views, level):
+    def render_subset_constraints(self, world_views, level):
         world_views = world_views[level]
         if not world_views:
             return
@@ -306,18 +384,16 @@ class Context:
                     term = fragments.guessing_term(literal)
                     name = '"w{}@{}"'.format(i + 1, level)
                     yield fragments.fact(fragments.atom(symbol, [name, term]))
-            yield from fragments.check_solved_rules()
+            yield from fragments.check_subset_rules()
 
-        self.append_src(
-            'solved_constraints', render(fragments.program(rules()))
-        )
+        self.append_src('world_views.fragment', render(rules()))
 
 
 class Solver:
 
     def __init__(self, context):
         self.context = context
-        self.world_views = {}
+        self.world_views = {'count': 0}
 
     @staticmethod
     def segregate_literals(literals):
@@ -335,108 +411,149 @@ class Solver:
 
         with options.reduct_out.open('w') as reduct_file:
             # This file is mandatory for HEX inspection
-            reduct_file.write(src['reduct_program'])
+            reduct_file.write(src[options.reduct_out.name])
         if options.debug:
             with options.guessing_out.open('w') as guessing_file:
-                guessing_file.write(src['gc_rules'])
+                guessing_file.write(src[options.guessing_out.name])
 
-        if options.enable_queries:
-            context.compute_cautious_consequences(options)
-            context.compute_brave_consequences(options)
-            context.min_level += (
-                len(context.literals['consequences']['cautious'])
-                + len(context.literals['ground_m_atoms'])
-                - len(context.literals['consequences']['brave'])
-            )
+        worlds_out = options.ehex_in.with_suffix('.worlds')
+        with worlds_out.open('w') as worlds_file:
+            worlds_file.write('')
+
+        def print_or_append(text):
+            if options.debug:
+                with worlds_out.open('a') as worlds_file:
+                    worlds_file.write(text + '\n')
+            else:
+                print(text)
 
         for level in range(context.min_level, context.max_level + 1):
-            context.set_src(level, render(fragments.level_constraint(level)))
+            level_out = options.level_out.with_suffix('.{}.lp'.format(level))
+            context.set_src(
+                level_out.name, render(fragments.level_constraint(level))
+            )
             self.world_views[level] = {}
             if level > context.min_level:
-                context.render_solved_constraints(self.world_views, level - 1)
-                if src['solved_constraints']:
-                    context.append_src(level, src['solved_constraints'])
+                context.render_subset_constraints(self.world_views, level - 1)
+                context.append_src(level_out.name, src['world_views.fragment'])
 
             if options.enable_queries:
-                context.compute_cautious_consequences(
-                    options, extra_src=src[level], key=level
+                cautious = context.compute_consequences(
+                    'cautious', options, extra_src=src[level_out.name],
+                    key=level
                 )
-                if context.literals['consequences'][level]['cautious'] is None:
+                if cautious is None:
                     continue
 
-                context.compute_brave_consequences(
-                    options, extra_src=src[level], key=level
+                brave = context.compute_consequences(
+                    'brave', options, extra_src=src[level_out.name], key=level
                 )
-                if context.literals['consequences'][level]['brave'] is None:
+                if brave is None:
                     continue
 
-                check_level = (
-                    len(context.literals['consequences'][level]['cautious'])
-                    + len(context.literals['ground_m_atoms'])
-                    - len(context.literals['consequences'][level]['brave'])
+                checking_level = (
+                    len(cautious)
+                    + len(context.brave_modals)
+                    - len(brave)
                 )
-                if level < check_level:
+                if checking_level > level:
                     continue
 
-                context.render_k_facts(level)
-                context.render_m_facts(level)
-                context.append_src(
-                    level, src['k_facts'], src['m_facts']
-                )
+                if checking_level > context.min_level:
+                    out_facts = context.create_k_facts(cautious)
+                    out_facts |= context.create_m_facts(brave)
+                    out_facts -= context.facts['out']
+                    context.update_level(options, level, out_facts)
+                    context.append_src(
+                        level_out.name,
+                        context.src['guessing_facts.{}.fragment'.format(level)]
+                    )
 
             if options.debug:
-                level_path = options.level_out.with_suffix(
-                    '.{}.hex'.format(level)
-                )
-                with level_path.open('w') as level_file:
-                    level_file.write(src[level])
+                with level_out.open('w') as level_file:
+                    level_file.write(src[level_out.name])
                 print('Results at level {}:'.format(level), file=sys.stderr)
                 results = dlvhex(
-                    str(level_path),
+                    str(level_out),
                     str(options.guessing_out),
                     str(options.reduct_out),
                     debug=True,
                     print_errors=True,
-                    pfilter=context.literals['filter_predicates'],
+                    pfilter=context.filter_predicates,
                 )
             else:
                 context.set_src(
                     'problem',
-                    src[level],
-                    src['reduct_program'],
-                    src['gc_rules'],
+                    src[level_out.name],
+                    src[options.reduct_out.name],
+                    src[options.guessing_out.name],
                 )
                 results = dlvhex(
-                    text=src['problem'],
-                    pfilter=context.literals['filter_predicates'],
+                    src=src['problem'],
+                    pfilter=context.filter_predicates,
                 )
 
+            wv_info = (
+                'World view {}\n'
+                'True ({}): {}\n'
+                'False ({}): {}'
+            )
+            first_wv = None
+            all_modals = {
+                lit: modal
+                if modal.op == 'M' else DefaultNegation(literal=modal)
+                for lit, modal in context.ground_modals.items()
+            }
+            in_facts = {
+                key: all_modals[key]
+                for key in context.facts['in'] | context.facts['asp']
+            }
             for ans in answerset.parse(results):
                 guess, ans = self.segregate_literals(ans)
-                if guess not in self.world_views[level]:
-                    self.world_views[level][guess] = [ans]
-                else:
-                    self.world_views[level][guess].append(ans)
-                if 'first' not in self.world_views:
-                    self.world_views['first'] = guess
-                    if not options.debug:
-                        print(
-                            'World view 1@{} wrt {}:'.
-                            format(level, answerset.render(guess))
-                        )
-                if guess == self.world_views['first'] and not options.debug:
-                    print(answerset.render(ans))
+                self.world_views[level].setdefault(guess, []).append(ans)
+                if first_wv is None:
+                    first_wv = guess
+                    in_guess = {nkey(lit): lit for lit in guess}
+                    in_guess.update(in_facts)
+                    out_guess = {
+                        lit: modal
+                        for lit, modal in all_modals.items()
+                        if lit not in in_guess
+                    }
 
-            if not options.debug:
-                for i, wv in enumerate(self.world_views[level]):
-                    if wv == self.world_views['first']:
-                        continue
-                    print(
-                        'World view {}@{} wrt {}:'.
-                        format(i + 1, level, answerset.render(wv))
+                    self.world_views['count'] += 1
+                    print_or_append(
+                        wv_info.format(
+                            self.world_views['count'], len(in_guess),
+                            answerset.render(in_guess.values()),
+                            len(out_guess),
+                            answerset.render(out_guess.values())
+                        )
                     )
-                    for ans in self.world_views[level][wv]:
-                        print(answerset.render(ans))
+                if guess == first_wv:
+                    print_or_append(answerset.render(ans))
+
+            other_wvs = (
+                wv for wv in self.world_views[level] if wv is not first_wv
+            )
+            for wv in other_wvs:
+                in_guess = {nkey(lit): lit for lit in guess}
+                in_guess.update(in_facts)
+                out_guess = {
+                    lit: modal
+                    for lit, modal in all_modals.items()
+                    if lit not in in_guess
+                }
+                self.world_views['count'] += 1
+                print_or_append(
+                    wv_info.format(
+                        self.world_views['count'], len(in_guess),
+                        answerset.render(in_guess.values()), len(out_guess),
+                        answerset.render(out_guess.values())
+                    )
+                )
+                for ans in self.world_views[level][wv]:
+                    print_or_append(answerset.render(ans))
 
             if options.debug:
                 if self.world_views[level]:

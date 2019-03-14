@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# pylint: disable=fixme
 
 """We apply a variant of the following translation rules from Kahl et al. 2016:
 
@@ -24,6 +23,7 @@ The double negation is turned off by default and can be enabled using the flag
 --kahl-semantics on the command line.
 """
 
+import re
 from copy import copy
 from functools import wraps
 
@@ -32,7 +32,7 @@ from tatsu.model import NodeWalker
 from ehex import fragments
 from ehex.filter import ExtendedModals
 from ehex.parser import model
-from ehex import SNEG_PREFIX
+from ehex import SNEG_PREFIX, AUX_MARKER, K_PREFIX, M_PREFIX, DOMAIN
 from ehex.utils import is_iterable
 
 
@@ -120,7 +120,6 @@ class OverApproximationWalker(TransformationWalker):
         literals = ExtendedModals(node)
         node = self.walk_Node(node)
         self._add_domain(literals, node)
-        return None
 
     @staticmethod
     def walk_WeakConstraint(*_):
@@ -136,12 +135,6 @@ class OverApproximationWalker(TransformationWalker):
 
     @staticmethod
     def walk_DefaultNegation(*_):
-        # This does not work in some cases, e.g., kahl/ex17.ehex:
-        # if isinstance(node.literal, model.MModal):
-        #     return self.clone(
-        #         node,
-        #         literal=self.walk_Node(node.literal.literal)
-        #     )
         return None
 
     @staticmethod
@@ -152,8 +145,19 @@ class OverApproximationWalker(TransformationWalker):
     def walk_KModal(self, node, *_):
         return node.literal
 
-    @staticmethod
-    def walk_AggregateRelation(*_):
+    def walk_AggregateRelation(self, node, *_):
+        if node.left_op and node.right_op:
+            node = fragments.conjunction([
+                self.clone(node, right_op=None, right=None),
+                self.clone(node, left_op=None, left=None)
+            ])
+        elif '=' not in (node.left_op, node.right_op):
+            return None
+        return self.walk_Node(node)
+
+    def walk_BinaryRelation(self, node, *_):
+        if node.op == '=':
+            return self.walk_Node(node)
         return None
 
     @postwalk
@@ -168,10 +172,9 @@ class OverApproximationWalker(TransformationWalker):
                 modal = literal.literal
             else:
                 modal = literal
-            op = modal.op
             self._new_rules.append(
                 fragments.rule(
-                    fragments.domain_atom(op.lower(), modal.literal),
+                    fragments.domain_atom(modal),
                     node.body
                 )
             )
@@ -188,7 +191,7 @@ class OverApproximationWalker(TransformationWalker):
                     fragments.rule(literal, node.body)
                 )
             return None
-        elif isinstance(head, model.ChoiceRelation):
+        if isinstance(head, model.ChoiceRelation):
             for element in head.choices:
                 self._new_rules.append(
                     fragments.rule(
@@ -209,11 +212,13 @@ class OverApproximationWalker(TransformationWalker):
 class TranslationWalker(TransformationWalker):
     """Translate epistemic ASP program to HEX program"""
 
-    def __init__(self):
-        self.modals = set()
+    def __init__(self, semantics):
+        self.semantics = semantics
+        self.modals = []
 
     @postwalk
     def walk_KModal(self, node):  # pylint: disable=no-self-use
+        self.modals.append(node)
         modal_literal = fragments.not_k_literal(node.literal)
         return fragments.conjunction([
             fragments.not_(modal_literal),
@@ -222,12 +227,63 @@ class TranslationWalker(TransformationWalker):
 
     @postwalk
     def walk_MModal(self, node):  # pylint: disable=no-self-use
+        self.modals.append(node)
         return fragments.m_literal(node.literal)
 
     @postwalk
+    def walk_AggregateRelation(self, node, *_):
+        if node.left_op and node.right_op:
+            return fragments.conjunction([
+                self.clone(node, right_op=None, right=None),
+                self.clone(node, left_op=None, left=None)
+            ])
+        return node
+
     def walk_DefaultNegation(self, node):  # pylint: disable=no-self-use
-        if isinstance(node.literal, model.Conjunction):
-            return node.literal.literals[0].literal
+        walked = self.walk_Node(node)
+        if isinstance(walked.literal, model.Conjunction):
+            if isinstance(node.literal, model.KModal):
+                return walked.literal.literals[0].literal
+            if isinstance(node.literal, model.AggregateRelation):
+                return fragments.conjunction([
+                    fragments.not_(aggr) for aggr in walked.literal.literals
+                ])
+        return walked
+
+    @postwalk
+    def walk_Program(self, node):
+        node.statements.extend(
+            fragments.guessing_assignment_rules(self.modals, self.semantics)
+        )
+        return node
+
+
+class GroundingResultWalker(TransformationWalker):
+    DOM_ATOM = re.compile(
+        '{}{}_({}|{})_({}_)?(.+)'.format(
+            AUX_MARKER, DOMAIN, K_PREFIX, M_PREFIX, SNEG_PREFIX,
+        )
+    ).match
+
+    @classmethod
+    def walk_Atom(cls, node, *_):
+        match = cls.DOM_ATOM(node.symbol)
+        if not match:
+            return node
+        op, sneg, symbol = match.groups()
+        literal = model.Atom(
+            symbol=symbol, arguments=node.arguments
+        )
+        if sneg:
+            literal = model.StrongNegation(atom=literal)
+        if op == K_PREFIX:
+            literal = model.KModal(literal=literal, op='K')
+        else:
+            literal = model.MModal(literal=literal, op='M')
+        return literal
+
+    @staticmethod
+    def walk_StrongNegation(node, *_):
         return node
 
 

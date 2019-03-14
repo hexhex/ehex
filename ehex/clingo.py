@@ -4,7 +4,7 @@ from subprocess import (Popen, PIPE, DEVNULL)
 
 
 def solve(
-    *files, mode=None, debug=False, print_errors=None, src='', models=0,
+    *files, mode=None, debug=False, print_errors=None, src='', models=None,
     quiet=None, **options
 ):
     if print_errors is None:
@@ -18,7 +18,7 @@ def solve(
     options.update({
         'verbose': 0,
         'outf': 1,
-        'models': models,
+        'models': 0 if models is None and mode is None else models,
         'quiet': quiet,
         'mode': mode,
     })
@@ -35,12 +35,12 @@ def solve(
     }
 
     cmd = ['clingo']
-    cmd += ['--{}'.format(name.replace('_', '-')) for name in flags]
-    cmd += [
+    cmd.extend('--{}'.format(name.replace('_', '-')) for name in flags)
+    cmd.extend(
         '--{}={}'.format(key.replace('_', '-'), value)
         for key, value in options.items()
-    ]
-    cmd += files
+    )
+    cmd.extend(files)
     if debug:
         print('{} {}'.format(cmd[0], ' \\\n  '.join(cmd[1:])), file=sys.stderr)
 

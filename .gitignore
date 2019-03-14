@@ -5,3 +5,4 @@ examples/**/*.hex
 *.out
 *.bak
 tmp
+env

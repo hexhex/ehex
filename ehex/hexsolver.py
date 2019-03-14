@@ -7,7 +7,7 @@ from subprocess import (
 
 
 def solve(
-    *files, debug=False, print_errors=None, text='',
+    *files, debug=False, print_errors=None, src='',
     pfilter=None, **options
 ):
     if print_errors is None:
@@ -30,13 +30,13 @@ def solve(
     }
 
     cmd = ['dlvhex2']
-    cmd += ['--{}'.format(name.replace('_', '-')) for name in flags]
-    cmd += [
+    cmd.extend('--{}'.format(name.replace('_', '-')) for name in flags)
+    cmd.extend(
         '--{}={}'.format(key.replace('_', '-'), value)
         for key, value in options.items()
-    ]
-    cmd += files
-    if text:
+    )
+    cmd.extend(files)
+    if src:
         cmd.append('--')
     if debug:
         print(
@@ -53,7 +53,7 @@ def solve(
     )
 
     with proc.stdin as stdin:
-        stdin.write(text)
+        stdin.write(src)
 
     for line in proc.stdout:
         yield line

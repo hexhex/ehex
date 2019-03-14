@@ -156,7 +156,7 @@ class HEXAnswerSetParser(Parser):
                 self._cut()
                 self._void()
                 self.name_last_node('op')
-                self._pattern(r'_')
+                self._pattern('_')
                 self._atom_()
                 self.name_last_node('atom')
             self._error('no available options')
@@ -194,7 +194,7 @@ class HEXAnswerSetParser(Parser):
                 self._error('no available options')
         self.name_last_node('op')
         self._cut()
-        self._pattern(r'_')
+        self._pattern('_')
         with self._group():
             with self._choice():
                 with self._option():
@@ -214,7 +214,7 @@ class HEXAnswerSetParser(Parser):
         self._DNEG_PREFIX_()
         self.name_last_node('op')
         self._cut()
-        self._pattern(r'_')
+        self._pattern('_')
         self._modal_()
         self.name_last_node('literal')
         self.ast._define(
@@ -286,35 +286,23 @@ class HEXAnswerSetParser(Parser):
 
     @tatsumasu()
     def _ID_(self):  # noqa
-        self._pattern(r'[a-z][a-zA-Z0-9_]*')
+        self._pattern('[a-z][a-zA-Z0-9_]*')
 
     @tatsumasu()
     def _STRING_(self):  # noqa
-        self._pattern(r'"(?:\\"|[^"])*"')
+        self._pattern('"(?:\\\\"|[^"])*"')
 
     @tatsumasu('int')
     def _NUMBER_(self):  # noqa
-        self._pattern(r'0|\d+')
+        self._pattern('0|\\d+')
 
     @tatsumasu()
     def _COMMA_(self):  # noqa
         self._token(',')
 
     @tatsumasu()
-    def _PLUS_(self):  # noqa
-        self._token('+')
-
-    @tatsumasu()
     def _MINUS_(self):  # noqa
         self._token('-')
-
-    @tatsumasu()
-    def _TIMES_(self):  # noqa
-        self._token('*')
-
-    @tatsumasu()
-    def _DIV_(self):  # noqa
-        self._token('/')
 
     @tatsumasu()
     def _PAREN_OPEN_(self):  # noqa
@@ -334,27 +322,27 @@ class HEXAnswerSetParser(Parser):
 
     @tatsumasu()
     def _AUX_MARKER_(self):  # noqa
-        self._pattern(r'aux__')
+        self._token('aux__')
 
     @tatsumasu()
     def _DNEG_PREFIX_(self):  # noqa
-        self._pattern(r'NOT')
+        self._token('NOT')
 
     @tatsumasu()
     def _K_PREFIX_(self):  # noqa
-        self._pattern(r'K')
+        self._token('K')
 
     @tatsumasu()
     def _M_PREFIX_(self):  # noqa
-        self._pattern(r'M')
+        self._token('M')
 
     @tatsumasu()
     def _SNEG_PREFIX_(self):  # noqa
-        self._pattern(r'NEG')
+        self._token('NEG')
 
     @tatsumasu()
     def _GUESS_PREFIX_(self):  # noqa
-        self._pattern(r'IN')
+        self._token('IN')
 
 
 class HEXAnswerSetSemantics(object):
@@ -424,16 +412,7 @@ class HEXAnswerSetSemantics(object):
     def COMMA(self, ast):  # noqa
         return ast
 
-    def PLUS(self, ast):  # noqa
-        return ast
-
     def MINUS(self, ast):  # noqa
-        return ast
-
-    def TIMES(self, ast):  # noqa
-        return ast
-
-    def DIV(self, ast):  # noqa
         return ast
 
     def PAREN_OPEN(self, ast):  # noqa
