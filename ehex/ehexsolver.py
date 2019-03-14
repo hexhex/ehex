@@ -8,10 +8,11 @@ from ehex.utils import flatten
 import ehex
 from ehex import fragments, answerset, aspif
 from ehex.parser.model import (
-    EHEXModelBuilderSemantics as Semantics,
-    StrongNegation,
-    Modal,
+    Atom,
     DefaultNegation,
+    EHEXModelBuilderSemantics as Semantics,
+    Modal,
+    StrongNegation,
 )
 from ehex.parser.ehex import EHEXParser
 from ehex.translation import (
@@ -74,6 +75,10 @@ class Context:
         if options.planning_mode:
             facts['in'] |= {nkey('M goal')}
             facts['out'] |= {nkey('not K goal')}
+            horizon = [
+                a.arguments[0].ast for a in envelope
+                if isinstance(a, Atom) and a.symbol == 'horizon'
+            ][0]
             self.update_fragments(options, facts)
 
         if options.grounder == 'asp':
@@ -85,14 +90,16 @@ class Context:
 
         self.facts = facts
         self.set_src('world_views.fragment', '')
-        max_level = len(self.ground_modals) - len(facts['in'] | facts['asp'])
-        if options.max_level is not None:
-            max_level = min(max_level, options.max_level)
-        self.max_level = max_level
+        self.max_level = len(self.ground_modals) - len(facts['in'] | facts['asp'])
         if options.enable_queries:
             self.min_level = len(facts['out'])
         else:
             self.min_level = 0
+        if options.planning_mode:
+            self.min_level = len(self.ground_modals) - (horizon + 1)
+            self.max_level = self.min_level
+        if options.max_level is not None:
+            self.max_level = min(self.max_level, options.max_level)
 
     @staticmethod
     def _parse_program(program_path):
@@ -157,9 +164,10 @@ class Context:
         return envelope, ground_modals
 
     def update_fragments(self, options, facts):
-        domain_modals = facts['domain']
-        self.create_guessing_domain(domain_modals)
-        self.create_guessing_facts(in_facts=facts['in'], out_facts=facts['out'])
+        self.create_guessing_domain(facts['domain'])
+        self.create_guessing_facts(
+            in_facts=facts['in'], out_facts=facts['out']
+        )
         if facts['asp']:
             asp_facts = {
                 fact: fragments.guessing_atom(self.ground_modals[fact])
