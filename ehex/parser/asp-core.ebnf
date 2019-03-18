@@ -30,13 +30,13 @@ constraint::Constraint
 
 rule::Rule
     =
-    head:head [CONS [body:body]] DOT
+    head:head ~ [CONS [body:body]] DOT
     ;
 
 
 weak_constraint::WeakConstraint
     =
-    WCONS [body:body] DOT
+    WCONS ~ [body:body] DOT
     SQUARE_OPEN weight_at_level:weight_at_level SQUARE_CLOSE
     ;
 
@@ -58,7 +58,7 @@ disjunction::Disjunction
 
 choice::ChoiceRelation (* TODO: Review this *)
     =
-    | left:term left_op:relational_op choices:choice_set
+    | left:term left_op:relational_op ~ choices:choice_set
         [right_op:relational_op right:term]
     | choices:choice_set [right_op:relational_op right:term]
     ;
@@ -84,13 +84,13 @@ aggregate_literal
 
 
 default_negated_aggreagate::DefaultNegation
-    = op:NOT literal:aggregate
+    = op:NOT ~ literal:aggregate
     ;
 
 
 aggregate::AggregateRelation
     =
-    | left:term left_op:relational_op aggregate:aggregate_function
+    | left:term left_op:relational_op ~ aggregate:aggregate_function
         [right_op:relational_op right:term]
     | aggregate:aggregate_function right_op:relational_op right:term
     ;
@@ -98,7 +98,7 @@ aggregate::AggregateRelation
 
 aggregate_function::AggregateFunction
     =
-    symbol: aggregate_function_symbol CURLY_OPEN
+    symbol: aggregate_function_symbol ~ CURLY_OPEN
     [!CURLY_CLOSE elements:aggregate_elements] CURLY_CLOSE
     ;
 
@@ -123,7 +123,7 @@ aggregate_element::AggregateElement
 
 optimize::Optimize
     =
-    function:optimize_function CURLY_OPEN
+    function:optimize_function ~ CURLY_OPEN
     [elements:optimize_elements] CURLY_CLOSE DOT
     ;
 
@@ -161,7 +161,7 @@ atom::Atom
 
 strong_negated_atom::StrongNegation
     =
-    op:MINUS atom:atom
+    op:MINUS ~ atom:atom
     ;
 
 
@@ -170,7 +170,7 @@ predicate_symbol = !NOT ID ;
 
 builtin_atom::BinaryRelation
     =
-    left:term op:relational_op right:term
+    left:term op:relational_op ~ right:term
     ;
 
 
@@ -190,7 +190,7 @@ extended_literal
 
 default_negated_literal::DefaultNegation
     =
-    op:NOT literal:(classical_literal | builtin_atom)
+    op:NOT ~ literal:(classical_literal | builtin_atom)
     ;
 
 
@@ -253,7 +253,7 @@ interval::Interval
 
 functional::FunctionalTerm::Term
     =
-    symbol:function_symbol PAREN_OPEN [arguments:terms] PAREN_CLOSE
+    symbol:function_symbol PAREN_OPEN ~ [arguments:terms] PAREN_CLOSE
     ;
 
 
@@ -262,13 +262,13 @@ function_symbol = ID ;
 
 subterm::SubTerm::Term
     =
-    PAREN_OPEN @:term PAREN_CLOSE
+    PAREN_OPEN ~ @:term PAREN_CLOSE
     ;
 
 
 negative_term::NegativeTerm::Term
     =
-    MINUS term
+    MINUS ~ term
     ;
 
 

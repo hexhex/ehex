@@ -1,4 +1,4 @@
-MODULES = asp.py ehex.py model.py answerset.py
+MODULES = asp.py ehex.py model.py
 
 all: $(MODULES)
 	

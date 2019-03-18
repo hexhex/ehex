@@ -2,11 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from tatsu.model import NodeWalker
-from ehex.codegen import EHEXCodeGenerator as CodeGenerator
 from ehex.utils import is_iterable
-
-
-render = CodeGenerator().render
 
 
 class NodeFilter(NodeWalker):

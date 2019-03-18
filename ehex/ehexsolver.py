@@ -2,7 +2,6 @@ import re
 import sys
 from ehex.hexsolver import solve as dlvhex
 from ehex.clingo import solve as clingo
-from ehex.codegen import EHEXCodeGenerator
 from ehex.utils import flatten
 
 import ehex
@@ -22,18 +21,20 @@ from ehex.translation import (
     TranslationWalker,
 )
 from ehex.filter import ClassicalLiterals
+from ehex.render import render as _render
 
-_render = EHEXCodeGenerator().render
 
-
-def render(fragment):
-    return '\n\n'.join(_render(item) for item in flatten(fragment))
+def render(fragment, sort=False):
+    src = [_render(item) for item in flatten(fragment)]
+    if sort:
+        src = sorted(src)
+    return '\n\n'.join(src)
 
 
 def nkey(obj):
     if not isinstance(obj, str):
-        obj = render(obj)
-    return (*answerset.generate_literals(answerset.nested_split(obj)),)[-2:]
+        obj = _render(obj)
+    return answerset.nkeys(answerset.nested_split(obj))[-2:]
 
 
 class Context:
@@ -76,7 +77,7 @@ class Context:
             facts['in'] |= {nkey('M goal')}
             facts['out'] |= {nkey('not K goal')}
             horizon = [
-                a.arguments[0].ast for a in envelope
+                int(a.arguments[0]) for a in envelope
                 if isinstance(a, Atom) and a.symbol == 'horizon'
             ][0]
             self.update_fragments(options, facts)
@@ -85,7 +86,7 @@ class Context:
             asp_modals, asp_facts = self.asp_grounding(options)
             facts['domain'] &= asp_modals
             facts['asp'] |= asp_facts
-            # facts['in'] |= asp_facts
+            facts['in'] -= asp_facts
             self.update_fragments(options, facts)
 
         self.facts = facts
@@ -157,8 +158,13 @@ class Context:
 
         if options.debug:
             print('Envelope:', answerset.render(envelope), file=sys.stderr)
+            weak_modals = (
+                literal
+                if literal.op == 'M' else DefaultNegation(literal=literal)
+                for literal in ground_modals
+            )
             print(
-                'Ground modals:', answerset.render(ground_modals),
+                'Ground weak modals:', answerset.render(weak_modals),
                 file=sys.stderr
             )
         return envelope, ground_modals
@@ -174,8 +180,7 @@ class Context:
                 for fact in facts['asp']
             }
             self.fragments['asp_facts'] = [
-                fragments.fact(asp_facts[fact])
-                for fact in sorted(asp_facts)
+                fragments.fact(asp_facts[fact]) for fact in asp_facts
             ]
 
 
@@ -189,7 +194,7 @@ class Context:
         self.render_fragments(options, update_src=False)
 
     def create_guessing_domain(self, domain_modals):
-        modals = [self.ground_modals[modal] for modal in sorted(domain_modals)]
+        modals = [self.ground_modals[modal] for modal in domain_modals]
         self.fragments['guessing_domain'] = fragments.domain_facts(modals)
 
     def create_guessing_facts(self, in_facts=(), out_facts=(), level=None):
@@ -200,11 +205,11 @@ class Context:
             key += '.{}'.format(level)
         in_facts = [
             fragments.in_atom(fragments.guessing_term(self.ground_modals[f]))
-            for f in sorted(in_facts)
+            for f in in_facts
         ]
         out_facts = [
             fragments.out_atom(fragments.guessing_term(self.ground_modals[f]))
-            for f in sorted(out_facts)
+            for f in out_facts
         ]
         self.fragments[key] = [fragments.fact(f) for f in in_facts + out_facts]
 
@@ -252,10 +257,13 @@ class Context:
         )
 
     def render_fragments(self, options, update_src=True):
-        fragments_map = self.fragments
-        for key in [*fragments_map]:
-            fragment = fragments_map.pop(key)
-            self.set_src('{}.fragment'.format(key), render(fragment))
+        render_sorted = {'guessing_domain', 'guessing_facts', 'asp_facts'}
+        for key in [*self.fragments]:
+            fragment = self.fragments.pop(key)
+            self.set_src(
+                '{}.fragment'.format(key),
+                render(fragment, sort=key in render_sorted)
+            )
         if not update_src:
             return
         self.set_src(
@@ -392,9 +400,11 @@ class Context:
                     term = fragments.guessing_term(literal)
                     name = '"w{}@{}"'.format(i + 1, level)
                     yield fragments.fact(fragments.atom(symbol, [name, term]))
-            yield from fragments.check_subset_rules()
 
-        self.append_src('world_views.fragment', render(rules()))
+        self.append_src(
+            'world_views.fragment', render(rules(), sort=True),
+            render(fragments.check_subset_rules())
+        )
 
 
 class Solver:
@@ -424,9 +434,9 @@ class Solver:
             with options.guessing_out.open('w') as guessing_file:
                 guessing_file.write(src[options.guessing_out.name])
 
-        worlds_out = options.ehex_in.with_suffix('.worlds')
-        with worlds_out.open('w') as worlds_file:
-            worlds_file.write('')
+            worlds_out = options.ehex_in.with_suffix('.worlds')
+            with worlds_out.open('w') as worlds_file:
+                worlds_file.write('')
 
         def print_or_append(text):
             if options.debug:
@@ -583,6 +593,4 @@ class Solver:
                             'levels 1-{}'.format(context.max_level)
                         )
                     )
-                break
-            if options.planning_mode and self.world_views[level]:
                 break

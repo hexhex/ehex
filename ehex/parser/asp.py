@@ -134,6 +134,7 @@ class ASPParser(Parser):
     def _rule_(self):  # noqa
         self._head_()
         self.name_last_node('head')
+        self._cut()
         with self._optional():
             self._CONS_()
             with self._optional():
@@ -148,6 +149,7 @@ class ASPParser(Parser):
     @tatsumasu('WeakConstraint')
     def _weak_constraint_(self):  # noqa
         self._WCONS_()
+        self._cut()
         with self._optional():
             self._body_()
             self.name_last_node('body')
@@ -215,6 +217,7 @@ class ASPParser(Parser):
                 self.name_last_node('left')
                 self._relational_op_()
                 self.name_last_node('left_op')
+                self._cut()
                 self._choice_set_()
                 self.name_last_node('choices')
                 with self._optional():
@@ -281,6 +284,7 @@ class ASPParser(Parser):
     def _default_negated_aggreagate_(self):  # noqa
         self._NOT_()
         self.name_last_node('op')
+        self._cut()
         self._aggregate_()
         self.name_last_node('literal')
         self.ast._define(
@@ -296,6 +300,7 @@ class ASPParser(Parser):
                 self.name_last_node('left')
                 self._relational_op_()
                 self.name_last_node('left_op')
+                self._cut()
                 self._aggregate_function_()
                 self.name_last_node('aggregate')
                 with self._optional():
@@ -320,6 +325,7 @@ class ASPParser(Parser):
     def _aggregate_function_(self):  # noqa
         self._aggregate_function_symbol_()
         self.name_last_node('symbol')
+        self._cut()
         self._CURLY_OPEN_()
         with self._optional():
             with self._ifnot():
@@ -375,6 +381,7 @@ class ASPParser(Parser):
     def _optimize_(self):  # noqa
         self._optimize_function_()
         self.name_last_node('function')
+        self._cut()
         self._CURLY_OPEN_()
         with self._optional():
             self._optimize_elements_()
@@ -458,6 +465,7 @@ class ASPParser(Parser):
     def _strong_negated_atom_(self):  # noqa
         self._MINUS_()
         self.name_last_node('op')
+        self._cut()
         self._atom_()
         self.name_last_node('atom')
         self.ast._define(
@@ -477,6 +485,7 @@ class ASPParser(Parser):
         self.name_last_node('left')
         self._relational_op_()
         self.name_last_node('op')
+        self._cut()
         self._term_()
         self.name_last_node('right')
         self.ast._define(
@@ -516,6 +525,7 @@ class ASPParser(Parser):
     def _default_negated_literal_(self):  # noqa
         self._NOT_()
         self.name_last_node('op')
+        self._cut()
         with self._group():
             with self._choice():
                 with self._option():
@@ -667,6 +677,7 @@ class ASPParser(Parser):
         self._function_symbol_()
         self.name_last_node('symbol')
         self._PAREN_OPEN_()
+        self._cut()
         with self._optional():
             self._terms_()
             self.name_last_node('arguments')
@@ -683,6 +694,7 @@ class ASPParser(Parser):
     @tatsumasu('SubTerm')
     def _subterm_(self):  # noqa
         self._PAREN_OPEN_()
+        self._cut()
         self._term_()
         self.name_last_node('@')
         self._PAREN_CLOSE_()
@@ -690,6 +702,7 @@ class ASPParser(Parser):
     @tatsumasu('NegativeTerm')
     def _negative_term_(self):  # noqa
         self._MINUS_()
+        self._cut()
         self._term_()
 
     @tatsumasu('ConstantTerm')
@@ -731,19 +744,19 @@ class ASPParser(Parser):
 
     @tatsumasu()
     def _ID_(self):  # noqa
-        self._pattern(r'[a-z][a-zA-Z0-9_]*')
+        self._pattern('[a-z][a-zA-Z0-9_]*')
 
     @tatsumasu()
     def _VARIABLE_(self):  # noqa
-        self._pattern(r'[A-Z][a-zA-Z0-9_]*')
+        self._pattern('[A-Z][a-zA-Z0-9_]*')
 
     @tatsumasu('str')
     def _STRING_(self):  # noqa
-        self._pattern(r'"(\\"|[^"])*"')
+        self._pattern('"(\\\\"|[^"])*"')
 
     @tatsumasu('int')
     def _NUMBER_(self):  # noqa
-        self._pattern(r'0|\d+')
+        self._pattern('0|\\d+')
 
     @tatsumasu()
     def _ANONYMOUS_VARIABLE_(self):  # noqa
@@ -882,13 +895,13 @@ class ASPParser(Parser):
     @tatsumasu()
     def _MINIMIZE_(self):  # noqa
         self._token('#minimi')
-        self._pattern(r'[zs]')
+        self._pattern('[zs]')
         self._token('e')
 
     @tatsumasu()
     def _MAXIMIZE_(self):  # noqa
         self._token('#maximi')
-        self._pattern(r'[zs]')
+        self._pattern('[zs]')
         self._token('e')
 
 
