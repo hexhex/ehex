@@ -237,7 +237,7 @@ class Context:
                 ehex.AUX_MARKER, ehex.K_PREFIX, ehex.M_PREFIX, ehex.SNEG_PREFIX
             )
         )
-        get_symbol = {'NOT_K': 'K', 'NEG': '-'}.get
+        get_symbol = {'NOT_K': 'K', 'NEG': '¬'}.get
 
         def repl(s):
             match = MODAL.match(s)

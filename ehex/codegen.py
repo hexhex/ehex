@@ -157,8 +157,7 @@ class Atom(ModelRenderer):
 
 class StrongNegation(ModelRenderer):
 
-    # template = '¬{atom}'
-    template = '-{atom}'
+    template = '¬{atom}'
 
 
 class DefaultNegation(ModelRenderer):

@@ -9,14 +9,13 @@ from ehex.parser.model import KModal, MModal
 parse_cache = {}
 PAT = re.compile(r'("(?:\\"|[^"])*"|[()])')
 SEP = re.compile(r'[{,.}]|\s+')
-match_sneg = re.compile(
-    r'(-|{}{})_(.+)'.format(AUX_MARKER, SNEG_PREFIX)
-).match
 match_modal = re.compile(
     '{}({}|{})_({}_)?(.+)'.format(
         AUX_MARKER, K_PREFIX, M_PREFIX, SNEG_PREFIX,
     )
 ).match
+aux_in = AUX_MARKER + IN_ATOM
+aux_sneg = AUX_MARKER + SNEG_PREFIX
 
 
 def nested_split(text):
@@ -74,7 +73,6 @@ def _atom(nkey):
 
 
 def parsed(tokens):
-    aux_in = AUX_MARKER + IN_ATOM
     for nkey in nkeys(tokens):
         try:
             yield parse_cache[nkey]
@@ -92,9 +90,8 @@ def parsed(tokens):
                 value = MModal(literal=value, op='M')
         else:
             value = _atom(nkey)
-            sneg_match = match_sneg(value.symbol)
-            if sneg_match:
-                value.symbol = sneg_match.group(2)
+            if value.symbol.startswith(aux_sneg):
+                value.symbol = value.symbol[len(aux_sneg) + 1:]
                 value = fragments.neg(value)
         parse_cache[nkey] = value
         yield value
