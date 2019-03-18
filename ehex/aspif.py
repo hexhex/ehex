@@ -11,31 +11,30 @@ CHOICE = 1
 NBODY = 0
 WBODY = 1
 
-def tokenize(stream):
-    for line in stream:
-        yield line.split()
 
-
-def handle_header(vm, vn, vr, *tags):
+def handle_header(data):
+    vm, vn, vr, *tags = data.split()
     return ((vm, vn, vr), tags)
 
 
-def handle_rule(*args):
-    h, m, *head = [int(a) for a in args]
+def handle_rule(data):
+    h, m, *head = [int(a) for a in data.split()]
     b, n, *body = head[m:]
     if b == WBODY or h == CHOICE:
         raise NotImplementedError
     return ((h, head[:m]), (b, body[:n]))
 
 
-def handle_output(m, s, n, *literals):
-    m, n, *literals = [int(s) for s in (m, n, *literals)]
-    assert len(s) == m
+def handle_output(data):
+    m, data = data.split(None, 1)
+    m = int(m)
+    s = data[:m]
+    n, *literals = [int(s) for s in data[m:].split()]
     return (s, literals[:n])
 
 
-def handle_end(*args):
-    return args
+def handle_end():
+    return ()
 
 
 handler = {
@@ -47,8 +46,8 @@ handler = {
 
 
 def parse(stream):
-    for tokens in tokenize(stream):
-        stmt, *data = tokens
+    for line in stream:
+        stmt, *data = line.split(None, 1)
         try:
             handle = handler[stmt]
         except KeyError:
