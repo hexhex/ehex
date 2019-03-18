@@ -1,7 +1,9 @@
 import argparse
+import os
 import pathlib
 import signal
 import sys
+
 from ehex.ehexsolver import Solver, Context
 from ehex import KAHL_SEMANTICS, SE_SEMANTICS
 
@@ -51,7 +53,15 @@ def main():
         options.level_out = options.ehex_in.with_suffix('.level.lp')
 
     solver = Solver(Context(options))
-    solver.solve(options)
+
+    # https://docs.python.org/3/library/signal.html#note-on-sigpipe
+    try:
+        solver.solve(options)
+        sys.stdout.flush()
+    except BrokenPipeError:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(1)
 
 
 if __name__ == '__main__':
