@@ -40,7 +40,7 @@ def main():
         '-k', '--kahl-semantics', action='store_const', const=KAHL_SEMANTICS,
         default=SE_SEMANTICS, dest='semantics'
     )
-    parser.add_argument('-w', '--one-world-view', action='store_true')
+    parser.add_argument('-w', '--witness', action='store_true')
     options = parser.parse_args()
 
     if options.reduct_out is None:

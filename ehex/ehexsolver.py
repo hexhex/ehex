@@ -55,7 +55,7 @@ class Context:
 
         envelope, envelope_modals = self.compute_envelope(options)
         self._set_ground_modals(envelope_modals)
-        self.create_filter_predicates(envelope)
+        self._set_filter_predicates(envelope, options)
 
         facts = {
             'domain': {*self.ground_modals},
@@ -301,16 +301,15 @@ class Context:
         }
         return sorted(directives)
 
-    def create_filter_predicates(self, envelope):
-        predicates = {  # TODO: use filter from command line
+    def _set_filter_predicates(self, envelope, options):
+        self.filter_predicates = {fragments.aux_name(ehex.IN_ATOM)}
+        if options.witness:
+            return
+        self.filter_predicates |= {
             fragments.aux_name(literal.atom.symbol, ehex.SNEG_PREFIX)
-            if isinstance(literal, StrongNegation)
-            else literal.symbol
+            if isinstance(literal, StrongNegation) else literal.symbol
             for literal in envelope
-        } | {fragments.aux_name(ehex.IN_ATOM)}
-        if not predicates:
-            predicates = {'none'}
-        self.filter_predicates = predicates
+        }
 
     def _set_ground_modals(self, modals):
         ground_modals = {}
@@ -498,6 +497,7 @@ class Solver:
                     debug=True,
                     print_errors=True,
                     pfilter=context.filter_predicates,
+                    number=int(options.witness),
                 )
             else:
                 context.set_src(
@@ -509,6 +509,7 @@ class Solver:
                 results = dlvhex(
                     src=src['problem'],
                     pfilter=context.filter_predicates,
+                    number=int(options.witness),
                 )
 
             wv_info = (
@@ -548,8 +549,12 @@ class Solver:
                             answerset.render(out_guess.values())
                         )
                     )
+                if options.witness:
+                    break
                 if guess == first_wv:
                     print_or_append(answerset.render(ans))
+            if options.witness and first_wv is not None:
+                break
 
             other_wvs = (
                 wv for wv in self.world_views[level] if wv is not first_wv
