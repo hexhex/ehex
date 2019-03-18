@@ -3,4 +3,4 @@
 % World view {{p}} wrt {M p}
 
 p ← M p.
-p or q ← not M p.
+p v q ← not M p.
