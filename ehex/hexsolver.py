@@ -1,9 +1,12 @@
+import signal
 import sys
 from subprocess import (
     Popen,
     PIPE,
     DEVNULL
 )
+
+from ehex.utils import check_status
 
 
 def solve(
@@ -57,3 +60,5 @@ def solve(
 
     for line in proc.stdout:
         yield line
+
+    check_status(proc)

@@ -1,4 +1,6 @@
 import collections
+import signal
+import sys
 
 
 def is_iterable(obj):
@@ -32,3 +34,20 @@ def last(iterator, *args):
     for value in iterator:
         pass
     return value
+
+
+def check_status(proc):
+    status = proc.wait()
+    if status != 0:
+        name = proc.args[0]
+        if status < 0:
+            num = abs(status)
+            msg = '{} was terminated by signal {}'.format(
+                name,
+                signal.Signals(num).name
+            )
+            status = 128 + num
+        else:
+            msg = '{} exited with return code {}'.format(name, status)
+        print(msg, file=sys.stderr)
+        sys.exit(status)

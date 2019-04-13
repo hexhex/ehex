@@ -2,6 +2,8 @@ import sys
 import re
 from subprocess import (Popen, PIPE, DEVNULL)
 
+from ehex.utils import check_status
+
 
 def solve(
     *files, mode=None, debug=False, print_errors=None, src='', models=None,
@@ -65,3 +67,5 @@ def solve(
         if ignore(line):
             continue
         yield line
+
+    check_status(proc)
