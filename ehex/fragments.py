@@ -21,14 +21,14 @@ from ehex import (
 
 def remove_prefix(name, prefix):
     if name.startswith(prefix):
-        return name[len(prefix):]
+        return name[len(prefix) :]
     return name
 
 
-def aux_name(symbol, prefix=''):
+def aux_name(symbol, prefix=""):
     if prefix:
-        prefix += '_'
-    return '{}{}{}'.format(
+        prefix += "_"
+    return "{}{}{}".format(
         AUX_MARKER, prefix.upper(), remove_prefix(symbol, AUX_MARKER)
     )
 
@@ -38,7 +38,7 @@ def atom(symbol, terms=None):
     return model.Atom(symbol=symbol, arguments=terms)
 
 
-def aux_atom(symbol, terms=None, prefix=''):
+def aux_atom(symbol, terms=None, prefix=""):
     aux_symbol = aux_name(symbol, prefix=prefix)
     return atom(aux_symbol, terms)
 
@@ -69,7 +69,7 @@ out_atom = named_atom(OUT_ATOM)
 def domain_atom(modal):
     atom_ = guessing_atom(modal)
     symbol = aux_name(atom_.symbol, prefix=DOMAIN)
-    arguments = getattr(atom_, 'arguments', None)
+    arguments = getattr(atom_, "arguments", None)
     return atom(symbol, arguments)
 
 
@@ -78,7 +78,7 @@ def variable(symbol):
 
 
 def aux_variable(symbol):
-    symbol = '{}{}'.format(AUX_MARKER.upper(), symbol)
+    symbol = "{}{}".format(AUX_MARKER.upper(), symbol)
     return variable(symbol)
 
 
@@ -88,21 +88,18 @@ def constraint(body):
 
 def cautious_inspection(symbol, terms):
     input_name = aux_name(INPUT_ATOM)
-    path_variable = aux_variable('path').ast
+    path_variable = aux_variable("path").ast
     return atom(
-        '&hexCautious[file, {}, {}, {}]'.format(
-            path_variable, input_name, symbol
-        ), terms
+        "&hexCautious[file, {}, {}, {}]".format(path_variable, input_name, symbol),
+        terms,
     )
 
 
 def brave_inspection(symbol, terms):
     input_name = aux_name(INPUT_ATOM)
-    path_variable = aux_variable('path').ast
+    path_variable = aux_variable("path").ast
     return atom(
-        '&hexBrave[file, {}, {}, {}]'.format(
-            path_variable, input_name, symbol
-        ), terms
+        "&hexBrave[file, {}, {}, {}]".format(path_variable, input_name, symbol), terms
     )
 
 
@@ -135,10 +132,10 @@ def guessing_atom(modal, opposite=False):
         modal = modal.literal
     op = modal.op
     if opposite:
-        op = {'K': 'M', 'M': 'K'}[op]
-    if op == 'K':
+        op = {"K": "M", "M": "K"}[op]
+    if op == "K":
         return not_k_literal(modal.literal)
-    if op == 'M':
+    if op == "M":
         return m_literal(modal.literal)
     assert False
     return None
@@ -161,21 +158,17 @@ def m_literal(literal):
 
 
 def path_atom():
-    return atom(aux_name(PATH_ATOM), aux_variable('path'))
+    return atom(aux_name(PATH_ATOM), aux_variable("path"))
 
 
 def k_constraints(modal):
     symbol = modal.literal.symbol
     terms = modal.literal.arguments
     datom = domain_atom(modal)
-    cautious = aux_atom('cautious_' + symbol, terms)
+    cautious = aux_atom("cautious_" + symbol, terms)
     yield rule(
-        cautious, [
-            datom,
-            path_atom(),
-            modal.literal,
-            cautious_inspection(symbol, terms)
-        ]
+        cautious,
+        [datom, path_atom(), modal.literal, cautious_inspection(symbol, terms)],
     )
     modal_term = guessing_term(modal)
     yield constraint([datom, in_atom(modal_term), cautious])
@@ -186,7 +179,7 @@ def m_constraints(modal):
     symbol = modal.literal.symbol
     terms = modal.literal.arguments
     datom = domain_atom(modal)
-    brave = aux_atom('brave_' + symbol, terms)
+    brave = aux_atom("brave_" + symbol, terms)
     yield rule(brave, [datom, path_atom(), brave_inspection(symbol, terms)])
     modal_term = guessing_term(modal)
     yield constraint([datom, out_atom(modal_term), modal.literal])
@@ -200,13 +193,13 @@ def functional_term(symbol, terms=None):
 
 def guessing_term(modal, opposite=False):
     atom_ = guessing_atom(modal, opposite=opposite)
-    arguments = getattr(atom_, 'arguments', None)
+    arguments = getattr(atom_, "arguments", None)
     return functional_term(atom_.symbol, arguments)
 
 
 def input_rules():
     input_name = aux_name(INPUT_ATOM)
-    x = 'X'
+    x = "X"
     in_x = in_atom(x)
     out_x = out_atom(x)
     rules = (
@@ -217,18 +210,11 @@ def input_rules():
 
 
 def level_constraint(level):
-    elem = model.AggregateElement(
-        terms='X',
-        literals=[out_atom('X')],
+    elem = model.AggregateElement(terms="X", literals=[out_atom("X")],)
+    count_fn = model.AggregateFunction(symbol="#count", elements=[elem])
+    return constraint(
+        [not_(model.AggregateRelation(aggregate=count_fn, right_op="=", right=level))]
     )
-    count_fn = model.AggregateFunction(symbol='#count', elements=[elem])
-    return constraint([
-        not_(
-            model.AggregateRelation(
-                aggregate=count_fn, right_op="=", right=level
-            )
-        )
-    ])
 
 
 def check_subset_rules():
@@ -241,29 +227,27 @@ def check_subset_rules():
         return atom(name, terms)
 
     yield rule(
-        not_solved_atom('Z'), [
-            in_atom('X'),
-            not_(solved_atom(['Z', 'X'])),
-            solved_atom(['Z', '_']),
-        ]
+        not_solved_atom("Z"),
+        [in_atom("X"), not_(solved_atom(["Z", "X"])), solved_atom(["Z", "_"]),],
     )
-    yield constraint([not_(not_solved_atom('Z')), solved_atom(['Z', '_'])])
+    yield constraint([not_(not_solved_atom("Z")), solved_atom(["Z", "_"])])
 
 
 def guessing_rules(modals, optimize_guessing):
-    yield constraint([in_atom('X'), out_atom('X')])
+    yield constraint([in_atom("X"), out_atom("X")])
     for modal in modals:
         datom = domain_atom(modal)
         yield rule(
-            disjunction([
-                in_atom(guessing_term(modal)),
-                out_atom(guessing_term(modal))
-            ]), [datom]
+            disjunction(
+                [in_atom(guessing_term(modal)), out_atom(guessing_term(modal))]
+            ),
+            [datom],
         )
         if optimize_guessing:
-            yield rule(in_atom(guessing_term(modal)), [
-                out_atom(guessing_term(modal, opposite=True))
-            ])
+            yield rule(
+                in_atom(guessing_term(modal)),
+                [out_atom(guessing_term(modal, opposite=True))],
+            )
 
 
 def guessing_hints(modals, semantics):
@@ -274,8 +258,8 @@ def guessing_hints(modals, semantics):
         else:
             m_condition = modal.literal
         condition = {
-            'K': not_(modal.literal),
-            'M': m_condition,
+            "K": not_(modal.literal),
+            "M": m_condition,
         }
         datom = domain_atom(modal)
         yield rule(in_atom(guessing_term(modal)), [condition[modal.op], datom])
@@ -283,8 +267,8 @@ def guessing_hints(modals, semantics):
 
 def _checking_rules(modals):
     constraints = {
-        'K': k_constraints,
-        'M': m_constraints,
+        "K": k_constraints,
+        "M": m_constraints,
     }
     for modal in modals:
         yield from constraints[modal.op](modal)
@@ -308,9 +292,9 @@ def guessing_assignment_rules(modals, semantics):
         in_guess = in_atom(guessing_term(modal))
         out_guess = out_atom(guessing_term(modal))
         yield rule(head, in_guess)
-        if modal.op == 'K':
+        if modal.op == "K":
             yield rule(head, [out_guess, not_(literal)])
-        elif modal.op == 'M':
+        elif modal.op == "M":
             if semantics is KAHL_SEMANTICS:
                 not_l = not_atom(literal.symbol, literal.arguments)
                 yield rule(head, [out_guess, not_(not_l)])

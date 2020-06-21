@@ -1,10 +1,10 @@
 import sys
 
 
-ASP = 'asp'
-RULE = '1'
-OUTPUT = '4'
-END = '0'
+ASP = "asp"
+RULE = "1"
+OUTPUT = "4"
+END = "0"
 
 DISJUNCTION = 0
 CHOICE = 1
@@ -84,5 +84,5 @@ def main():
         print(literal)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

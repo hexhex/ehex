@@ -8,11 +8,9 @@ from ehex.parser.model import KModal, MModal
 
 parse_cache = {}
 PAT = re.compile(r'("(?:\\"|[^"])*"|[()])')
-SEP = re.compile(r'[{,.}]|\s+')
+SEP = re.compile(r"[{,.}]|\s+")
 match_modal = re.compile(
-    '{}({}|{})_({}_)?(.+)'.format(
-        AUX_MARKER, K_PREFIX, M_PREFIX, SNEG_PREFIX,
-    )
+    "{}({}|{})_({}_)?(.+)".format(AUX_MARKER, K_PREFIX, M_PREFIX, SNEG_PREFIX,)
 ).match
 aux_in = AUX_MARKER + IN_ATOM
 aux_sneg = AUX_MARKER + SNEG_PREFIX
@@ -24,33 +22,29 @@ def nested_split(text):
     for x in PAT.split(text):
         if x.startswith('"'):
             stack[-1].append(x)
-        elif x == '(':
+        elif x == "(":
             symbol = stack[-1][-1]
             terms = []
             stack[-1][-1] = (symbol, terms)
             stack.append(terms)
-        elif x == ')':
+        elif x == ")":
             stack.pop()
             if not stack:
-                raise ValueError('opening bracket is missing')
+                raise ValueError("opening bracket is missing")
         else:
             stack[-1] += [s for s in SEP.split(x) if s]
     if len(stack) > 1:
-        raise ValueError('closing bracket is missing')
+        raise ValueError("closing bracket is missing")
     return stack.pop()
 
 
 def nkeys(groups):
-    return tuple([
-        key if isinstance(key, str)
-        else nkeys(key)
-        for key in groups
-    ])
+    return tuple([key if isinstance(key, str) else nkeys(key) for key in groups])
 
 
 def render(answer_set):
     rendered = [render_literal(lit) for lit in answer_set]
-    return '{{{}}}'.format(', '.join(sorted(rendered)))
+    return "{{{}}}".format(", ".join(sorted(rendered)))
 
 
 def generate_tokens(stream):
@@ -60,8 +54,8 @@ def generate_tokens(stream):
 
 def _terms(terms):
     return [
-        t if isinstance(t, str) else
-        fragments.functional_term(t[0], _terms(t[1])) for t in terms
+        t if isinstance(t, str) else fragments.functional_term(t[0], _terms(t[1]))
+        for t in terms
     ]
 
 
@@ -85,13 +79,13 @@ def parsed(tokens):
             if sneg:
                 value = fragments.neg(value)
             if op == K_PREFIX:
-                value = fragments.not_(KModal(literal=value, op='K'))
+                value = fragments.not_(KModal(literal=value, op="K"))
             else:
-                value = MModal(literal=value, op='M')
+                value = MModal(literal=value, op="M")
         else:
             value = _atom(nkey)
             if value.symbol.startswith(aux_sneg):
-                value.symbol = value.symbol[len(aux_sneg) + 1:]
+                value.symbol = value.symbol[len(aux_sneg) + 1 :]
                 value = fragments.neg(value)
         parse_cache[nkey] = value
         yield value

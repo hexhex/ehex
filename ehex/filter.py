@@ -32,14 +32,12 @@ class NodeFilter(NodeWalker):
 
 
 class Modals(NodeFilter):
-
     @staticmethod
     def walk_Modal(node):
         yield node
 
 
 class ExtendedModals(Modals):
-
     @staticmethod
     def walk_Modal(node):
         yield node
@@ -51,42 +49,36 @@ class ExtendedModals(Modals):
 
 
 class Variables(NodeFilter):
-
     @staticmethod
     def walk_VariableTerm(node):
         yield node
 
 
 class Atoms(NodeFilter):
-
     @staticmethod
     def walk_Atom(node):
         yield node
 
 
 class Terms(NodeFilter):
-
     @staticmethod
     def walk_Term(node, *_, **__):
         yield node
 
 
 class DefaultNegations(NodeFilter):
-
     @staticmethod
     def walk_DefaultNegation(node, *_, **__):
         yield node
 
 
 class StrongNegations(NodeFilter):
-
     @staticmethod
     def walk_StrongNegation(node, *_, **__):
         yield node
 
 
 class ChoiceElements(NodeFilter):
-
     @staticmethod
     def walk_ChoiceElement(node, *_, **__):
         yield node
@@ -101,7 +93,6 @@ class ExtendedLiterals(DefaultNegations, Modals, ClassicalLiterals):
 
 
 class Rules(NodeFilter):
-
     @staticmethod
     def walk_Rule(node, *_, **__):
         yield node

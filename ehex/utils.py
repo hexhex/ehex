@@ -24,8 +24,8 @@ def generator(func):
 
 
 def to_camel_case(name):
-    words = name.split('_')
-    return words[0].lower() + ''.join(word.capitalize() for word in words[1:])
+    words = name.split("_")
+    return words[0].lower() + "".join(word.capitalize() for word in words[1:])
 
 
 def last(iterator, *args):
@@ -42,12 +42,11 @@ def check_status(proc):
         name = proc.args[0]
         if status < 0:
             num = abs(status)
-            msg = '{} was terminated by signal {}'.format(
-                name,
-                signal.Signals(num).name
+            msg = "{} was terminated by signal {}".format(
+                name, signal.Signals(num).name
             )
             status = 128 + num
         else:
-            msg = '{} exited with return code {}'.format(name, status)
+            msg = "{} exited with return code {}".format(name, status)
         print(msg, file=sys.stderr)
         sys.exit(status)

@@ -1,25 +1,17 @@
 import signal
 import sys
-from subprocess import (
-    Popen,
-    PIPE,
-    DEVNULL
-)
+from subprocess import Popen, PIPE, DEVNULL
 
 from ehex.utils import check_status
 
 
-def solve(
-    *files, debug=False, print_errors=None, src='',
-    pfilter=None, **options
-):
+def solve(*files, debug=False, print_errors=None, src="", pfilter=None, **options):
     if print_errors is None:
         print_errors = bool(files)
 
-    options.update({
-        'silent': True,
-        'filter': ','.join(pfilter) if pfilter else None,
-    })
+    options.update(
+        {"silent": True, "filter": ",".join(pfilter) if pfilter else None,}
+    )
 
     flags = {name for name, value in options.items() if value is True}
 
@@ -32,20 +24,16 @@ def solve(
         if not (value is None or value is False)
     }
 
-    cmd = ['dlvhex2']
-    cmd.extend('--{}'.format(name.replace('_', '-')) for name in flags)
+    cmd = ["dlvhex2"]
+    cmd.extend("--{}".format(name.replace("_", "-")) for name in flags)
     cmd.extend(
-        '--{}={}'.format(key.replace('_', '-'), value)
-        for key, value in options.items()
+        "--{}={}".format(key.replace("_", "-"), value) for key, value in options.items()
     )
     cmd.extend(files)
     if src:
-        cmd.append('--')
+        cmd.append("--")
     if debug:
-        print(
-            '{} {}'.format(cmd[0], ' \\\n  '.join(cmd[1:])),
-            file=sys.stderr
-        )
+        print("{} {}".format(cmd[0], " \\\n  ".join(cmd[1:])), file=sys.stderr)
 
     proc = Popen(
         cmd,

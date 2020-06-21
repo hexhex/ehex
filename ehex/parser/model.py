@@ -23,10 +23,12 @@ class ModelBase(Node):
 class EHEXModelBuilderSemantics(ModelBuilderSemantics):
     def __init__(self, context=None, types=None):
         types = [
-            t for t in globals().values()
+            t
+            for t in globals().values()
             if type(t) is type and issubclass(t, ModelBase)
         ] + (types or [])
         super(EHEXModelBuilderSemantics, self).__init__(context=context, types=types)
+
 
 class Conjunction(ModelBase):
     pass

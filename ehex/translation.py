@@ -37,7 +37,6 @@ from ehex.utils import is_iterable
 
 
 class TransformationWalker(NodeWalker):
-
     @staticmethod
     def clone(node, ast=None, **kwargs):
         attrs = {}
@@ -46,7 +45,7 @@ class TransformationWalker(NodeWalker):
             attrs = {
                 key: value
                 for key, value in vars(node).items()
-                if not key.startswith('_')
+                if not key.startswith("_")
             }
         attrs.update(kwargs)
         return type(node)(ast=ast, **attrs)
@@ -68,7 +67,7 @@ class TransformationWalker(NodeWalker):
         walked = {
             key: self.walk(child)
             for key, child in vars(node).items()
-            if not key.startswith('_')
+            if not key.startswith("_")
         } or self.walk(node.ast)
         return self.clone(node, ast=walked)
 
@@ -78,11 +77,11 @@ def postwalk(fn):
     def walk(self, node):
         node = self.walk_Node(node)
         return fn(self, node)
+
     return walk
 
 
 class RewriteStrongNegationWalker(TransformationWalker):
-
     def __init__(self):
         self._predicates = set()
 
@@ -102,9 +101,9 @@ class RewriteStrongNegationWalker(TransformationWalker):
     def _new_constraints(self):
         for symbol, arity in self._predicates:
             if arity <= 3:
-                terms = ['X', 'Y', 'Z'][:arity]
+                terms = ["X", "Y", "Z"][:arity]
             else:
-                terms = ['V{}'.format(i + 1) for i in range(arity)]
+                terms = ["V{}".format(i + 1) for i in range(arity)]
             vars_ = [fragments.variable(x) for x in terms]
             positive = fragments.atom(symbol, vars_)
             negated = fragments.sn_atom(symbol, vars_)
@@ -112,7 +111,6 @@ class RewriteStrongNegationWalker(TransformationWalker):
 
 
 class OverApproximationWalker(TransformationWalker):
-
     def __init__(self):
         self._new_rules = []
 
@@ -147,16 +145,18 @@ class OverApproximationWalker(TransformationWalker):
 
     def walk_AggregateRelation(self, node, *_):
         if node.left_op and node.right_op:
-            node = fragments.conjunction([
-                self.clone(node, right_op=None, right=None),
-                self.clone(node, left_op=None, left=None)
-            ])
-        elif '=' not in (node.left_op, node.right_op):
+            node = fragments.conjunction(
+                [
+                    self.clone(node, right_op=None, right=None),
+                    self.clone(node, left_op=None, left=None),
+                ]
+            )
+        elif "=" not in (node.left_op, node.right_op):
             return None
         return self.walk_Node(node)
 
     def walk_BinaryRelation(self, node, *_):
-        if node.op == '=':
+        if node.op == "=":
             return self.walk_Node(node)
         return None
 
@@ -173,10 +173,7 @@ class OverApproximationWalker(TransformationWalker):
             else:
                 modal = literal
             self._new_rules.append(
-                fragments.rule(
-                    fragments.domain_atom(modal),
-                    node.body
-                )
+                fragments.rule(fragments.domain_atom(modal), node.body)
             )
 
     def walk_Rule(self, node, *_):
@@ -187,16 +184,13 @@ class OverApproximationWalker(TransformationWalker):
         head = node.head
         if isinstance(head, model.Disjunction):
             for literal in head.literals:
-                self._new_rules.append(
-                    fragments.rule(literal, node.body)
-                )
+                self._new_rules.append(fragments.rule(literal, node.body))
             return None
         if isinstance(head, model.ChoiceRelation):
             for element in head.choices:
                 self._new_rules.append(
                     fragments.rule(
-                        element.choice,
-                        node.body.literals + element.literals.literals
+                        element.choice, node.body.literals + element.literals.literals
                     )
                 )
             return None
@@ -220,10 +214,7 @@ class TranslationWalker(TransformationWalker):
     def walk_KModal(self, node):  # pylint: disable=no-self-use
         self.modals.append(node)
         modal_literal = fragments.not_k_literal(node.literal)
-        return fragments.conjunction([
-            fragments.not_(modal_literal),
-            node.literal
-        ])
+        return fragments.conjunction([fragments.not_(modal_literal), node.literal])
 
     @postwalk
     def walk_MModal(self, node):  # pylint: disable=no-self-use
@@ -233,10 +224,12 @@ class TranslationWalker(TransformationWalker):
     @postwalk
     def walk_AggregateRelation(self, node, *_):
         if node.left_op and node.right_op:
-            return fragments.conjunction([
-                self.clone(node, right_op=None, right=None),
-                self.clone(node, left_op=None, left=None)
-            ])
+            return fragments.conjunction(
+                [
+                    self.clone(node, right_op=None, right=None),
+                    self.clone(node, left_op=None, left=None),
+                ]
+            )
         return node
 
     def walk_DefaultNegation(self, node):  # pylint: disable=no-self-use
@@ -245,9 +238,9 @@ class TranslationWalker(TransformationWalker):
             if isinstance(node.literal, model.KModal):
                 return walked.literal.literals[0].literal
             if isinstance(node.literal, model.AggregateRelation):
-                return fragments.conjunction([
-                    fragments.not_(aggr) for aggr in walked.literal.literals
-                ])
+                return fragments.conjunction(
+                    [fragments.not_(aggr) for aggr in walked.literal.literals]
+                )
         return walked
 
     @postwalk
@@ -260,7 +253,7 @@ class TranslationWalker(TransformationWalker):
 
 class GroundingResultWalker(TransformationWalker):
     DOM_ATOM = re.compile(
-        '{}{}_({}|{})_({}_)?(.+)'.format(
+        "{}{}_({}|{})_({}_)?(.+)".format(
             AUX_MARKER, DOMAIN, K_PREFIX, M_PREFIX, SNEG_PREFIX,
         )
     ).match
@@ -271,15 +264,13 @@ class GroundingResultWalker(TransformationWalker):
         if not match:
             return node
         op, sneg, symbol = match.groups()
-        literal = model.Atom(
-            symbol=symbol, arguments=node.arguments
-        )
+        literal = model.Atom(symbol=symbol, arguments=node.arguments)
         if sneg:
             literal = model.StrongNegation(atom=literal)
         if op == K_PREFIX:
-            literal = model.KModal(literal=literal, op='K')
+            literal = model.KModal(literal=literal, op="K")
         else:
-            literal = model.MModal(literal=literal, op='M')
+            literal = model.MModal(literal=literal, op="M")
         return literal
 
     @staticmethod
@@ -295,11 +286,11 @@ class RenameAtomsWalker(TransformationWalker):
 
     @staticmethod
     def _rename(old):
-        return '{}_'.format(old)
+        return "{}_".format(old)
 
     @postwalk
     def walk_Atom(self, node):  # pylint: disable=no-self-use
-        if node.symbol.startswith('#'):
+        if node.symbol.startswith("#"):
             return node
         new_symbol = self.rename(node.symbol)
         return self.clone(node, symbol=new_symbol)
