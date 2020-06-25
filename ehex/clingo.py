@@ -4,6 +4,9 @@ from subprocess import Popen, PIPE, DEVNULL
 
 from ehex.utils import check_status
 
+# https://www.mat.unical.it/aspcomp2013/files/aspoutput.txt
+EXIT_CODES = (0, 10, 20, 30, 62)
+
 
 def solve(
     *files,
@@ -66,6 +69,7 @@ def solve(
 
     if mode == "gringo":
         yield from proc.stdout
+        check_status(proc, expected=EXIT_CODES)
         return
 
     ignore = re.compile(r"^[A-Z%]").match
@@ -75,4 +79,4 @@ def solve(
             continue
         yield line
 
-    check_status(proc)
+    check_status(proc, expected=EXIT_CODES)

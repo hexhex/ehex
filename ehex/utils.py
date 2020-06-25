@@ -36,9 +36,9 @@ def last(iterator, *args):
     return value
 
 
-def check_status(proc):
+def check_status(proc, expected=0):
     status = proc.wait()
-    if status != 0:
+    if status not in flatten(expected):
         name = proc.args[0]
         if status < 0:
             num = abs(status)
@@ -47,6 +47,6 @@ def check_status(proc):
             )
             status = 128 + num
         else:
-            msg = "{} exited with return code {}".format(name, status)
+            msg = "{} exited with unexpected return code {}".format(name, status)
         print(msg, file=sys.stderr)
         sys.exit(status)
