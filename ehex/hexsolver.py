@@ -9,9 +9,7 @@ def solve(*files, debug=False, print_errors=None, src="", pfilter=None, **option
     if print_errors is None:
         print_errors = bool(files)
 
-    options.update(
-        {"silent": True, "filter": ",".join(pfilter) if pfilter else None,}
-    )
+    options.update({"silent": True, "filter": ",".join(pfilter) if pfilter else None})
 
     flags = {name for name, value in options.items() if value is True}
 

@@ -226,7 +226,7 @@ def check_subset_rules():
 
     yield rule(
         not_solved_atom("Z"),
-        [in_atom("X"), not_(solved_atom(["Z", "X"])), solved_atom(["Z", "_"]),],
+        [in_atom("X"), not_(solved_atom(["Z", "X"])), solved_atom(["Z", "_"])],
     )
     yield constraint([not_(not_solved_atom("Z")), solved_atom(["Z", "_"])])
 
