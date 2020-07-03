@@ -246,7 +246,7 @@ def guessing_rules(modals, optimize_guessing):
         if optimize_guessing:
             yield rule(
                 in_atom(guessing_term(modal)),
-                [out_atom(guessing_term(modal, opposite=True))],
+                [out_atom(guessing_term(modal, opposite=True)), datom],
             )
 
 
