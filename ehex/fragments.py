@@ -12,7 +12,6 @@ from ehex import (
     OUT_ATOM,
     INPUT_ATOM,
     PATH_ATOM,
-    EPISTEMIC_NEGATION,
     DOMAIN,
     SOLVED,
     KAHL_SEMANTICS,
@@ -61,7 +60,6 @@ sn_atom = prefixed_atom(SNEG_PREFIX)
 not_atom = prefixed_atom(DNEG_PREFIX)
 not_k_atom = prefixed_atom(K_PREFIX)
 m_atom = prefixed_atom(M_PREFIX)
-eneg_atom = named_atom(EPISTEMIC_NEGATION)
 in_atom = named_atom(IN_ATOM)
 out_atom = named_atom(OUT_ATOM)
 
