@@ -1,22 +1,21 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="ehex",
-    description="EHEX program parser and solver",
-    url="https://github.com/hexhex/ehex",
+    name="ehex-solver",
+    version="0.1",
     author="Tonico Strasser",
+    author_email="tonico.strasser@gmail.com",
+    description="Epistemic logic program solver using HEX programs",
+    url="https://github.com/hexhex/ehex",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",
         "Intended Audience :: Science/Research",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.8",
+        "Operating System :: OS Independent",
     ],
-    keywords="epistemic hex logic answerset programming asp",
-    install_requires=["tatsu>=4.2.5"],
-    python_requires=">=3.4",
-    entry_points={"console_scripts": ["ehex=ehex.app:main"],},
+    install_requires=["tatsu>=5.5.0"],
+    python_requires=">=3.8",
+    entry_points={"console_scripts": ["ehex=ehex.__main__:main"]},
 )

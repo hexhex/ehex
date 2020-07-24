@@ -1,23 +1,26 @@
-# EHEX Solver
+# Epistemic Logic Program Solver Using HEX Programs
 
-Installation as user:
+Ehex is a prototype solver for problems encoded as *epistemic logic programs* (ELP). ELP programs extend the language of ordinary logic programs with modal operators as in modal logic. The solver includes a parser for ELP programs, which supports the traditional syntax of modal literals on top of the [ASP-Core-2](https://www.mat.unical.it/aspcomp2013/files/ASP-CORE-2.03b.pdf) syntax. It outputs the _world views_ of a given ALP program that correspond to the solutions of the problem to be solved. For computing world views, the solver uses HEX programs containing [_external atoms_](http://www.kr.tuwien.ac.at/research/systems/dlvhex/nestedhexplugin.html), which are used for consistency checking during the evaluation of the HEX programs by reasoning over certain subprograms.
 
+## Installation
+
+The solver is implemented as a command line application written in Python and can be installed with pip from this repository. To install _ehex_ into your local file system run:
 ```
-$ pip3 install --user git+https://github.com/hexhex/ehex.git
-```
-
-Installation as root:
-
-```
-$ sudo pip3 install git+https://github.com/hexhex/ehex.git
+pip install --user git+https://github.com/hexhex/ehex/
 ```
 
-You will also need `dlvhex2` and `clingo` (see below). After installation you can use the provided `ehex` command line tool. Basic usage with examples from this repository:
+Ehex depends on Python >= 3.8 and the [TaSu](https://github.com/neogeny/TatSu) grammar compiler >= 5.0, which is installed as a dependency when pip is used. For reasoning tasks it requires recent binaries of [_clingo_](https://github.com/potassco/clingo) and [_dlvhex2_](https://github.com/hexhex/core) in one of the user's PATH directories.
 
-```
-$ git clone https://github.com/hexhex/ehex.git
-$ cd ehex
-$ ehex examples/eligible.ehex
-```
+## Usage
 
-Dependencies: Python 3.4+, [TatSu](https://github.com/neogeny/tatsu); also make sure `dlvhex2` with the [NestedHexPlugin](https://github.com/hexhex/nestedhexplugin) and `clingo` 5.2.x is in your path.
+The solver reads input from the files given as command line arguments or from stdin. For more information, type `ehex -h`.
+
+Example:
+```sh
+$ echo "a :- M a." | ehex
+World: 1@1
+Modals: {M a}
+{a}
+```
+Some example programs are included in the [examples](examples) directory
+of this repository.

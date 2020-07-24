@@ -1,0 +1,73 @@
+(* ASP-Core-2 Literals *)
+
+naf_literals = @+:naf_literal {LAND ~ @+:naf_literal}*;
+
+naf_literal::StandardLiteral
+    =
+    | negation:NOT ~ atom:classical_atom
+    | atom:(builtin_atom | classical_atom)
+    ;
+
+classical_atom::Atom
+    =
+    [negation:LNOT ~] name:NAME (
+        | '(' ~ args:(terms | {}) ')'
+        | args:{}
+    )
+    ;
+
+builtin_atom::BuiltinAtom
+    =
+    left:term rel:rel_op right:term
+    ;
+
+choice_atom::ChoiceAtom
+    =
+    [left:term left_rel:rel_op]
+    '{' ~ elements:(choice_elements | {}) '}'
+    [right_rel:rel_op right:term]
+    ;
+
+choice_elements = @+:choice_element {';' ~ @+:choice_element}* ;
+
+choice_element::ChoiceElement
+    =
+    atom:classical_atom ~ (
+        | ':' literals:(naf_literals | {})
+        | literals: {}
+    )
+    ;
+
+naf_aggregate::AggregateLiteral
+    =
+    [negation:NOT] atom:aggregate_atom
+    ;
+
+aggregate_atom::AggregateAtom
+    =
+    [left:term left_rel:rel_op]
+    name:aggregate_name ~ '{' [elements:aggregate_elements] '}'
+    [right_rel:rel_op right:term]
+    ;
+
+aggregate_elements =  @+:aggregate_element {';' ~ @+:aggregate_element}* ;
+
+aggregate_element::AggregateElement
+    =
+    terms:(terms | {})  (
+        | ':' literals:(naf_literals | {})
+        | literals:{}
+    )
+    ;
+
+aggregate_name = '#count' | '#max' | '#min' | '#sum' ;
+
+rel_op = '<=' | '>=' | '<>' | '!=' | '<' | '>' | '=' ;
+
+LAND = ',' ;
+LOR = '|';
+LNOT = '-' ;
+NOT = 'not' ;
+CONS = ':-';
+
+#include :: "terms.ebnf"

@@ -1,0 +1,28 @@
+(* ELP Language *)
+
+(* Extends a subset of the ASP-Core-2 input language. In particular, it
+   does not support queries, weak constraints, and optimize statements.
+   For convenience, gringos’s interval syntax is is allowed, which is
+   also accepted by dlvhex. *)
+
+
+@@eol_comments :: /%([^\n]*?)$/
+@@keyword :: not
+#include :: "asp.ebnf"
+
+start = program;
+
+modal_literal::ModalLiteral
+    =
+    | negation:NOT modality:('K' | 'M') ~ !NOT literal:naf_literal
+    | modality:('K' | 'M') ~ literal:naf_literal
+    ;
+
+_body_literal = >body_literal;
+@override body_literal = modal_literal | >_body_literal ;
+
+@override LAND = ',' | '&' | '∧';
+@override LOR =  ';' | '|' | 'v' | '∨';
+@override LNOT = '-' | '¬' ;
+@override CONS = ':-'| '←' ;
+

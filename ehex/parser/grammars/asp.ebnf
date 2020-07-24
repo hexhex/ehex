@@ -1,0 +1,32 @@
+(* Subset of the ASP-Core-2 Input Language Version 2.03b *)
+
+
+program::Program
+    =
+    rules:{!$ rule}* $
+    ;
+
+rule::Rule
+    =
+    | CONS ~ body:(body | {}) '.'
+    | head:head ~ (
+        | CONS body:(body | {})
+        | body:{}
+      ) '.'
+    ;
+
+head = disjunction | choice_atom ;
+
+body
+    =
+    @+:body_literal {LAND ~ @+:body_literal}*
+    ;
+
+body_literal = naf_aggregate | naf_literal ;
+
+disjunction::Disjunction
+    =
+    atoms+:classical_atom {LOR ~ atoms+:classical_atom}*
+    ;
+
+#include :: "literals.ebnf"

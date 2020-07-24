@@ -1,0 +1,74 @@
+(* ASP-Core-2 Terms *)
+
+
+terms = @+:term {',' ~ @+:term}*;
+
+term
+    =
+    | interval_term
+    | single_term
+    ;
+
+interval_term::IntervalTerm::Term
+    =
+    @:single_term {'..' ~ @:single_term}+
+    ;
+
+single_term
+    =
+    | arithmetic_term
+    | basic_term
+    ;
+
+arithmetic_term::ArithmeticTerm::Term
+    =
+    @:basic_term {@:arith_op ~ @:basic_term}+
+    ;
+
+basic_term
+    =
+    | functional_term
+    | simple_term
+    | sub_term
+    | negative_term
+    ;
+
+functional_term::FunctionalTerm::Term
+    =
+    name:NAME '(' ~ args:(terms | {}) ')'
+    ;
+
+sub_term::SubTerm::Term
+    =
+    '(' ~ @:term ')'
+    ;
+
+negative_term::NegativeTerm::Term
+    =
+    '-' ~ @:term
+    ;
+
+simple_term =
+    | constant_term
+    | variable_term
+    ;
+
+constant_term::ConstantTerm::Term
+    =
+    | NAME
+    | STRING
+    | NUMBER
+    ;
+
+variable_term::VariableTerm::Term
+    =
+    | VARIABLE
+    | '_'
+    ;
+
+arith_op = '+' | '-' | '*' | '/';
+
+@name NAME = /[a-z][a-zA-Z0-9_]*/ ;
+VARIABLE = /[A-Z][a-zA-Z0-9_]*/ ;
+STRING::str = /"(\\"|[^"])*"/;
+NUMBER::int = /\d+/ ;

@@ -1,8 +1,4 @@
 __pycache__
-examples/**/*.hex
 *.egg-info
 *.pyc
-*.out
-*.bak
-tmp
-env
+.tags
