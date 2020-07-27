@@ -54,7 +54,10 @@ def consistency_check(ground_atoms, reduct_out):
 
 def level_check(level, omega):
     cc = cardinality_check(level)
-    sc = subset_check(level)
-    mr = member_facts(omega)
-    rules = [*cc, *sc, *mr]
+    if omega:
+        sc = subset_check(level)
+        mr = member_facts(omega)
+        rules = [*cc, *sc, *mr]
+    else:
+        rules = [*cc]
     return auxrender(elpmodel.Program(rules=rules))

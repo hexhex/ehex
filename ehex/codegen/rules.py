@@ -19,7 +19,7 @@ def facts(atoms):
 
 def input_rules():
     guess = auxmodel.AuxGuess(args=["M"])
-    neg_guess = guess.clone(negation="-")
+    neg_guess = guess.clone(negation="-", no_constraint=True)
     yield elpmodel.Rule(
         head=auxmodel.AuxInput(args=[guess.clone(args=[]), 1, "M"]),
         body=[guess],
@@ -50,7 +50,7 @@ def checking_rules(ground_atoms, reduct_out):
         atom.args = [f"T{i+1}" for i in range(len(atom.args))]
         gnd = gnd.clone(args=[modal])
         guess = gnd.clone(model=auxmodel.AuxGuess)
-        neg_guess = guess.clone(negation="-")
+        neg_guess = guess.clone(negation="-", no_constraint=True)
 
         if modal.literal.negation:
             hexc = hexmodel.HEXCautiousAtom(program=program, query=atom)
