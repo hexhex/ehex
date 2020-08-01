@@ -5,7 +5,16 @@ from ehex.utils import model
 
 
 def guessing_rules(ground_atoms):
+    seen = set()
     for gnd in ground_atoms:
+        key = model.key(gnd.args[0])
+        if key in seen:
+            continue
+        seen.add(key)
+        modal = model.clone_literal(gnd.args[0])
+        atom = modal.literal.atom
+        atom.args = [f"T{i+1}" for i in range(len(atom.args))]
+        gnd = gnd.clone(args=[modal])
         guess = gnd.clone(model=auxmodel.AuxGuess)
         neg_guess = guess.clone(negation="-")
         head = elpmodel.Disjunction(atoms=[guess, neg_guess])
