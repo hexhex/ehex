@@ -57,7 +57,7 @@ def level_check(level, omega):
     if omega:
         sc = subset_check(level)
         mr = member_facts(omega)
-        rules = [*cc, *sc, *mr]
+        rules = [*mr, *sc, *cc]
     else:
         rules = [*cc]
     return auxrender(elpmodel.Program(rules=rules))
