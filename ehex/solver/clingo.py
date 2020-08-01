@@ -1,3 +1,4 @@
+import shutil
 import sys
 import re
 from subprocess import Popen, PIPE, DEVNULL
@@ -12,6 +13,10 @@ CLINGO = "clingo"
 def main(
     *files, src=None, quiet=None, models=None, debug=False, **options,
 ):
+    executable = shutil.which(CLINGO)
+    if executable is None:
+        raise FileNotFoundError(f"could not locate {CLINGO} executable")
+
     if quiet is None:
         if options.get("enum_mode") in {"brave", "cautious"}:
             quiet = 1
@@ -38,9 +43,9 @@ def main(
 
     flags = [f"--{name}" for name in flags]
     options = [f"--{key}={value}" for key, value in options.items()]
-    args = [CLINGO, *flags, *options, *files]
+    args = [executable, *flags, *options, *files]
     if debug:
-        cmd = "{} {}".format(CLINGO, " \\\n\t".join(args[1:]))
+        cmd = "{} {}".format(executable, " \\\n\t".join(args[1:]))
         print(cmd, file=sys.stderr)
     with Popen(
         args,

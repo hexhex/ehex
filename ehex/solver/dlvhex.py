@@ -1,3 +1,4 @@
+import shutil
 import sys
 from subprocess import Popen, PIPE, DEVNULL
 
@@ -9,6 +10,10 @@ DLVHEX = "dlvhex2"
 def main(
     *files, src=None, pfilter=None, number=0, debug=False, **options,
 ):
+    executable = shutil.which(DLVHEX)
+    if executable is None:
+        raise FileNotFoundError(f"could not locate {DLVHEX} executable")
+
     if pfilter:
         pfilter = ",".join(pfilter)
     if src:
@@ -29,9 +34,9 @@ def main(
 
     flags = [f"--{name}" for name in flags]
     options = [f"--{key}={value}" for key, value in options.items()]
-    args = [DLVHEX, *flags, *options, *files]
+    args = [executable, *flags, *options, *files]
     if debug:
-        cmd = "{} {}".format(DLVHEX, " \\\n\t".join(args[1:]))
+        cmd = "{} {}".format(executable, " \\\n\t".join(args[1:]))
         print(cmd, file=sys.stderr)
     with Popen(
         args,
