@@ -37,39 +37,36 @@ class Program(auxgen.Program):
 
 class Rule(elpgen.Rule):
     def render_fields(self, fields):
-        body = [
-            self.replace_modal(literal)
-            if isinstance(literal, elpmodel.ModalLiteral)
-            else literal
-            for literal in fields["body"]
-        ]
-        fields.update(body=body)
+        fields.update(body=[*self.transform_body(fields["body"])])
         return super().render_fields(fields)
 
-    def replace_modal(self, modal):
-        modality = modal.modality
-        literal = modal.literal
-        true_modal = modal
-        if modality == "M" and not literal.negation:
-            repl = elpmodel.StandardLiteral(
-                atom=auxmodel.AuxTrue(args=[true_modal])
-            )
-        elif modality == "K" and literal.negation:
-            true_modal = model.opposite(modal)
-            repl = elpmodel.StandardLiteral(
-                atom=auxmodel.AuxTrue(args=[true_modal]), negation="not"
-            )
-        elif modality == "K" and not literal.negation:
-            repl = elpmodel.StandardLiteral(
-                atom=auxmodel.AuxTrue(args=[true_modal])
-            )
-        elif modality == "M" and literal.negation:
-            true_modal = model.opposite(modal)
-            repl = elpmodel.StandardLiteral(
-                atom=auxmodel.AuxTrue(args=[true_modal]), negation="not"
-            )
-        key = model.key(true_modal)
-        if key not in self.context.aux_true_keys:
-            self.context.aux_true_keys.add(key)
-            self.context.aux_rules.extend(rules.reduct_true(repl.atom))
-        return repl
+    def transform_body(self, body):
+        for element in body:
+            if not isinstance(element, elpmodel.ModalLiteral):
+                yield element
+                continue
+            mtype = (element.modality, not element.literal.negation)
+            true_modal = element
+            if mtype == ("M", True):
+                repl = elpmodel.StandardLiteral(
+                    atom=auxmodel.AuxTrue(args=[true_modal])
+                )
+            elif mtype == ("K", False):
+                true_modal = model.opposite(element)
+                repl = elpmodel.StandardLiteral(
+                    atom=auxmodel.AuxTrue(args=[true_modal]), negation="not"
+                )
+            elif mtype == ("K", True):
+                repl = elpmodel.StandardLiteral(
+                    atom=auxmodel.AuxTrue(args=[true_modal])
+                )
+            elif mtype == ("M", False):
+                true_modal = model.opposite(element)
+                repl = elpmodel.StandardLiteral(
+                    atom=auxmodel.AuxTrue(args=[true_modal]), negation="not"
+                )
+            key = model.key(true_modal)
+            if key not in self.context.aux_true_keys:
+                self.context.aux_true_keys.add(key)
+                self.context.aux_rules.extend(rules.reduct_true(repl.atom))
+            yield repl
