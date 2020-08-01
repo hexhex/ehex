@@ -61,7 +61,7 @@ class ModalLiteral(ModelRenderer):
 
     def aux_modal(self, modality, literal, **kws):
         atom = self.rend(literal.atom)
-        model.strip_prefix(atom)
+        atom = model.strip_prefix(atom)
         if literal.negation:
             return f"{PREFIX}{modality}_{NAF_NAME}_{atom}"
         return f"{PREFIX}{modality}_{atom}"
