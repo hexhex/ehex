@@ -78,11 +78,11 @@ def ehex(cfg):
             c_src,
         ]
     )
-    pfilter = [
+    pfilter = {
         model.neg_name(atom.name) if atom.negation else atom.name
         for atom in positive_envelope
-    ]
-    pfilter.append(auxmodel.PREFIX + auxmodel.AuxGuess._name)
+    }
+    pfilter.add(auxmodel.PREFIX + auxmodel.AuxGuess._name)
     omega = set()
     for k in reversed(range(len(ground_atoms) + 1)):
         if 0 == k and omega:
