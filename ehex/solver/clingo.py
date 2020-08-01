@@ -10,16 +10,8 @@ CLINGO = "clingo"
 
 
 def main(
-    *files,
-    src=None,
-    quiet=None,
-    models=None,
-    print_errors=False,
-    debug=False,
-    **options,
+    *files, src=None, quiet=None, models=None, debug=False, **options,
 ):
-    if not print_errors:
-        print_errors = debug
     if quiet is None:
         if options.get("enum_mode") in {"brave", "cautious"}:
             quiet = 1
@@ -54,7 +46,7 @@ def main(
         args,
         stdin=PIPE,
         stdout=PIPE,
-        stderr=None if print_errors else DEVNULL,
+        stderr=None if debug else DEVNULL,
         text=True,
     ) as proc:
         if src:

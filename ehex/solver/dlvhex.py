@@ -7,16 +7,8 @@ DLVHEX = "dlvhex2"
 
 
 def main(
-    *files,
-    src=None,
-    pfilter=None,
-    number=0,
-    debug=False,
-    print_errors=False,
-    **options,
+    *files, src=None, pfilter=None, number=0, debug=False, **options,
 ):
-    if print_errors is None:
-        print_errors = debug
     if pfilter:
         pfilter = ",".join(pfilter)
     if src:
@@ -45,7 +37,7 @@ def main(
         args,
         stdin=PIPE,
         stdout=PIPE,
-        stderr=None if print_errors else DEVNULL,
+        stderr=None if debug else DEVNULL,
         text=True,
     ) as proc:
         if src:
