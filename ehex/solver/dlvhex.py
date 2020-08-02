@@ -29,7 +29,7 @@ def main(
     options = {
         key.replace("_", "-"): value
         for key, value in options.items()
-        if value and value is not True or value == 0
+        if value and value is not True or value == 0 and value is not False
     }
 
     flags = [f"--{name}" for name in flags]
