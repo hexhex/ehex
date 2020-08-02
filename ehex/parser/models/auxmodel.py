@@ -19,10 +19,6 @@ class AuxAtom(elpmodel.Atom):
         return model.opposite(self)
 
 
-class AuxFlatAtom(AuxAtom):
-    pass
-
-
 class AuxGuess(AuxAtom):
     _name = "Guess"
     name = PREFIX + _name
