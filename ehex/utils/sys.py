@@ -10,11 +10,10 @@ def check_status(proc, expected=0):
         name = proc.args[0]
         if status < 0:
             num = abs(status)
-            msg = "{} was terminated by signal {}"
-            msg.format(name, signal.Signals(num).name)
+            sig_name = signal.Signals(num).name
+            msg = f"{name} was terminated by signal {sig_name}"
             status = 128 + num
         else:
-            msg = "{} exited with unexpected return code {}"
-            msg = msg.format(name, status)
+            msg = f"{name} exited with unexpected return code {status}"
         print(msg, file=sys.stderr)
         sys.exit(status)
