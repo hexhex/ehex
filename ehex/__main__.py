@@ -29,7 +29,7 @@ def main():
         "--models",
         metavar="N",
         default=0,
-        help="limit number of printed models per world view to %(metavar)s "
+        help="limit the number of printed models per world view to %(metavar)s "
         "(N=0 means all) (default is %(default)s)",
     ),
     parser.add_argument(
@@ -37,7 +37,7 @@ def main():
         "--world-views",
         metavar="N",
         default=1,
-        help="limit number of printed world views to %(metavar)s "
+        help="limit the number of printed world views to %(metavar)s "
         "(N=0 means all) (default is %(default)s)",
     )
     parser.add_argument(
@@ -57,21 +57,20 @@ def main():
         "-g",
         "--guessing-hints",
         action="store_true",
-        help="add specific rules to optimize guessing",
+        help="add guessing hint rules to optimize guessing",
     )
     parser.add_argument(
         "-r",
         "--ground-reduct",
         action="store_true",
         help="compute a possibly smaller set of ground modal literals "
-        "from grounded generic epistemic reduct",
+        "by grounding the generic epistemic reduct",
     )
     parser.add_argument(
         "-p",
         "--planning-mode",
         action="store_true",
-        help="enable specific optimizations if the input is a "
-        "planning problem",
+        help="enable optimizations specific to planning problems",
     )
     parser.add_argument(
         "-a",
