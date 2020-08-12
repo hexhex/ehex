@@ -1,0 +1,7 @@
+% Example 4 from (Shen and Eiter, 2016): "Closed world rules"
+%
+% World view {{}} wrt {M not p}
+% World view {{p}} wrt {M p}
+
+← p, M not p.  % assert not p when failing to prove p
+p ← M p.       % assert p when failing to prove not p

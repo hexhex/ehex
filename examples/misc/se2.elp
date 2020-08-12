@@ -1,0 +1,7 @@
+% Example 2 from (Shen and Eiter, 2016)
+%
+% World view {{innocent("John")}} wrt {M not guilty("John")}
+
+innocent("John") v guilty("John").
+% innocent(X) ← M not guilty(X).  % rule is not safe
+innocent("John") ← M not guilty("John").

@@ -1,0 +1,7 @@
+% Example 5 from (Shen and Eiter, 2016)
+%
+% World view {{p}} wrt {}
+
+r ← M not p, not r.  % constraint, every answer set should contain p
+p ← not q.
+q ← not p.
