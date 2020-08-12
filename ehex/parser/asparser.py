@@ -93,14 +93,13 @@ def model_args(token):
 
 
 def model_token(token):
-    key = repr(token)
     try:
-        return parse_cache[key]
+        return parse_cache[token]
     except KeyError:
         pass
 
     atom = model_atom(*model_args(token))
-    parse_cache[key] = atom
+    parse_cache[token] = atom
     return atom
 
 
@@ -111,19 +110,22 @@ def tokenize(text):
         if x.startswith('"'):
             stack[-1].append(x)
         elif x == "(":
-            name = stack[-1][-1]
-            args = []
-            stack[-1][-1] = (name, args)
-            stack.append(args)
+            stack.append([])
         elif x == ")":
-            stack.pop()
+            args = tuple(stack.pop())
             if not stack:
                 raise ValueError("opening bracket is missing")
+            try:
+                name = stack[-1][-1]
+            except IndexError:
+                raise ValueError("expected name before opening bracket")
+            stack[-1][-1] = (name, args)
         else:
             stack[-1] += [s for s in SEP.split(x) if s]
     if len(stack) > 1:
         raise ValueError("closing bracket is missing")
-    return stack.pop()
+    result = [(t, ()) if isinstance(t, str) else t for t in stack.pop()]
+    return result
 
 
 def parse_answer_set(text):
