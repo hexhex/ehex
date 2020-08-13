@@ -97,6 +97,7 @@ def model_token(token):
         pass
 
     atom = model_atom(*model_args(token))
+    atom.token = token
     parse_cache[token] = atom
     return atom
 

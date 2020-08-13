@@ -67,8 +67,8 @@ def checking_rules(ground_atoms, reduct_out):
             naf_auxc = elpmodel.StandardLiteral(negation="not", atom=auxc)
 
             yield elpmodel.Rule(head=auxc, body=[gnd, atom, hexc])
-            yield elpmodel.Rule(head=None, body=[guess, auxc])
-            yield elpmodel.Rule(head=None, body=[neg_guess, naf_auxc])
+            yield elpmodel.Rule(head=None, body=[gnd, guess, auxc])
+            yield elpmodel.Rule(head=None, body=[gnd, neg_guess, naf_auxc])
         else:
             hexb = hexmodel.HEXBraveAtom(program=program, query=atom)
             auxb = auxmodel.AuxBrave(args=[atom])
@@ -76,9 +76,9 @@ def checking_rules(ground_atoms, reduct_out):
             naf_atom = elpmodel.StandardLiteral(negation="not", atom=atom)
 
             yield elpmodel.Rule(head=auxb, body=[gnd, naf_atom, hexb])
-            yield elpmodel.Rule(head=auxb, body=[atom])
-            yield elpmodel.Rule(head=None, body=[guess, nauf_auxb])
-            yield elpmodel.Rule(head=None, body=[neg_guess, auxb])
+            yield elpmodel.Rule(head=auxb, body=[gnd, atom])
+            yield elpmodel.Rule(head=None, body=[gnd, guess, nauf_auxb])
+            yield elpmodel.Rule(head=None, body=[gnd, neg_guess, auxb])
 
 
 def cardinality_check(level):

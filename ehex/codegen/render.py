@@ -14,6 +14,7 @@ from ehex.codegen.rules import (
 )
 from ehex.parser.models import asmodel
 from ehex.parser.models import elpmodel
+from ehex.utils import model
 
 pprender = PositiveProgramGenerator().render
 elprender = ELPGenerator().render
@@ -39,8 +40,8 @@ def answer_set(elements):
     return asrender(as_model)
 
 
-def guessing_program(ground_atoms):
-    rules = [*guessing_rules(ground_atoms), *facts(ground_atoms)]
+def guessing_program(ground_atoms, guess_atoms):
+    rules = [*guessing_rules(ground_atoms), *facts(ground_atoms | guess_atoms)]
     return auxrender(elpmodel.Program(rules=rules))
 
 
@@ -61,3 +62,12 @@ def level_check(level, omega):
     else:
         rules = [*cc]
     return auxrender(elpmodel.Program(rules=rules))
+
+
+def clingo_show_directives(atoms):
+    predicates = [
+        (model.neg_name(a.name) if a.negation else a.name, len(a.args))
+        for a in atoms
+    ]
+    directives = [f"#show {name}/{arity}." for name, arity in set(predicates)]
+    return "\n".join(directives)
