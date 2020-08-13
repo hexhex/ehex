@@ -6,6 +6,7 @@ import sys
 from tatsu.exceptions import FailedParse
 
 from ehex.solver import ehex
+from ehex.solver import config
 
 
 def sigterm_handler(sig, *_):
@@ -85,8 +86,7 @@ def main():
         help="print debug information to <stderr> and write all "
         "intermediate programs to files in the output directory",
     )
-    cfg = ehex.Config()
-    parser.parse_args(namespace=cfg)
+    cfg = parser.parse_args(namespace=config.Config())
 
     try:
         ehex.main(cfg)

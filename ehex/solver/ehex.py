@@ -1,8 +1,4 @@
-import hashlib
-import pathlib
 import sys
-import tempfile
-import types
 
 from ehex.parser import parse_elp_input
 from ehex.parser.asparser import parse_answer_sets
@@ -152,36 +148,8 @@ def format_solutions(level, solutions):
             yield render.answer_set(ans)
 
 
-class Config(types.SimpleNamespace):
-    debug = False
-    out_dir = None
-
-    def setup_paths(self):
-        if self.debug or self.out_dir:
-            run_dir = "".join(sorted(self.elp_in))
-            run_dir = hashlib.sha1(run_dir.encode()).hexdigest()[:7]
-            run_dir = pathlib.Path(self.out_dir or "out") / run_dir
-            run_dir.mkdir(exist_ok=True, parents=True)
-        else:
-            self.tmp_dir = tempfile.TemporaryDirectory()
-            run_dir = pathlib.Path(self.tmp_dir.name)
-
-        self.reduct_out = run_dir / "reduct.lp"
-        self.pp_out = run_dir / "positive.lp"
-        self.lp_out = run_dir / "level.lp"
-        self.elp_out = run_dir / "parsed.elp"
-        if self.debug:
-            print(f"Runtime directory: {run_dir}", file=sys.stderr)
-
-    def cleanup(self):
-        try:
-            self.tmp_dir.cleanup()
-        except AttributeError:
-            pass
-
-
 def main(cfg):
-    cfg.setup_paths()
+    cfg.setup()
 
     try:
         satisfiable = False
