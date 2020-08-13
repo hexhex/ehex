@@ -13,13 +13,13 @@ class Unsatisfiable(Exception):
     pass
 
 
-def solve(reasoner, src, out, cfg, **kws):
-    if cfg.debug:
+def solve(solver, src, out, cfg, **kws):
+    if out and cfg.debug:
         with open(out, "w") as src_file:
             src_file.write(src)
-        result = reasoner.main(str(out), debug=cfg.debug, **kws)
+        result = solver.main(str(out), debug=cfg.debug, **kws)
     else:
-        result = reasoner.main(src=src, debug=cfg.debug, **kws)
+        result = solver.main(src=src, debug=cfg.debug, **kws)
     return parse_answer_sets(result)
 
 
@@ -32,7 +32,7 @@ def select_guess(solution):
     return frozenset(elements)
 
 
-def select_as(solution):
+def select_ans(solution):
     elements = [e for e in solution if not isinstance(e, auxmodel.AuxAtom)]
     return frozenset(elements)
 
@@ -64,10 +64,10 @@ def ehex(cfg):
             file=sys.stderr,
         )
     reduct_src = render.generic_reduct(elp_model)
-    g_src = render.guessing_program(ground_atoms)
-    c_src = render.consistency_check(ground_atoms, cfg.reduct_out)
     with cfg.reduct_out.open("w") as reduct_file:
         reduct_file.write(reduct_src)
+    g_src = render.guessing_program(ground_atoms, guess_atoms)
+    c_src = render.checking_program(ground_atoms, cfg.reduct_out)
     generic_src = "\n\n".join(
         [
             "% Generic Epistemic Redukt",
@@ -93,14 +93,14 @@ def ehex(cfg):
                     file=sys.stderr,
                 )
             break
-        lp_src = render.level_check(k, omega)
+
         lp_out = cfg.lp_out.with_suffix(f".{k}.lp")
         lp_src = "\n\n".join(
             [
                 f"% {lp_out}",
                 generic_src,
                 "% Level Specific Constraints",
-                lp_src,
+                render.level_check(k, omega),
             ]
         )
 
@@ -110,7 +110,7 @@ def ehex(cfg):
             ):
                 guess = select_guess(solution)
                 omega.add(guess)
-                ans = select_as(solution)
+                ans = select_ans(solution)
                 yield (guess, ans)
 
         yield (k, solutions())

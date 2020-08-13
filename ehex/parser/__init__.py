@@ -48,7 +48,7 @@ def read_input(*files):
         buf.close()
 
 
-def elpparse(src, name):
+def elpparse(src, name="<src>"):
     # This name may occur in error messages
     return ELPParser().parse(
         src, "program", filename=name, semantics=ModelBuilder(),

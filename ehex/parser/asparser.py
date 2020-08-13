@@ -62,7 +62,7 @@ def model_aux_atom(name, args):
 def model_atom(name, args, negation=None):
     if name.startswith(PREFIX) or name[0].isupper():
         return model_aux_atom(name, args)
-    if name[0] == "-":
+    if name.startswith("-"):
         negation = name[0]
         name = name[1:]
     return elpmodel.Atom(negation=negation, name=name, args=args)
@@ -71,7 +71,7 @@ def model_atom(name, args, negation=None):
 def model_term(name, args, negative=False):
     if name.startswith(PREFIX):
         return model_aux_atom(name, args)
-    if name[0] == "-":
+    if name.startswith("-"):
         name = name[1:]
         negative = True
     if not args:
@@ -85,11 +85,9 @@ def model_term(name, args, negative=False):
 
 def model_args(token):
     if isinstance(token, str):
-        name, args = token, ()
-    else:
-        name, args = token
-    args = [model_term(*model_args(a)) for a in args]
-    return name, args
+        return token, ()
+    name, args = token
+    return name, [model_term(*model_args(a)) for a in args]
 
 
 def model_token(token):

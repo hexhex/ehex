@@ -44,7 +44,7 @@ def guessing_program(ground_atoms):
     return auxrender(elpmodel.Program(rules=rules))
 
 
-def consistency_check(ground_atoms, reduct_out):
+def checking_program(ground_atoms, reduct_out):
     rules = [
         *input_rules(),
         *checking_rules(ground_atoms, reduct_out),
