@@ -104,6 +104,10 @@ def main():
         msg = f"Parse error: {e}"
         print(msg, file=sys.stderr)
         sys.exit(1)
+    except ehex.Unsatisfiable:
+        msg = "Unsatisfiable"
+        print(msg, file=sys.stderr)
+        sys.exit(0)
 
 
 if __name__ == "__main__":

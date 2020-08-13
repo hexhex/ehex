@@ -13,6 +13,10 @@ from ehex.solver import dlvhex
 from ehex.utils import model
 
 
+class Unsatisfiable(Exception):
+    pass
+
+
 def solve(reasoner, src, out, cfg, **kws):
     if cfg.debug:
         with open(out, "w") as src_file:
@@ -179,8 +183,16 @@ class Config(types.SimpleNamespace):
 def main(cfg):
     cfg.setup_paths()
 
-    for level, solutions in ehex(cfg):
-        for line in format_solutions(level, solutions):
-            print(line)
+    try:
+        satisfiable = False
+        for level, solutions in ehex(cfg):
+            for line in format_solutions(level, solutions):
+                print(line)
+                satisfiable = True
+        if not satisfiable:
+            raise Unsatisfiable
+    except Unsatisfiable:
+        cfg.cleanup()
+        raise
 
     cfg.cleanup()
