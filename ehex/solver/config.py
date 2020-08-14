@@ -7,6 +7,7 @@ import types
 
 class Config(types.SimpleNamespace):
     debug = False
+    elp_in = []
     out_dir = None
     compute_consequences = False
     ground_reduct = False
@@ -25,7 +26,7 @@ class Config(types.SimpleNamespace):
 
     def setup_paths(self):
         if self.debug or self.out_dir:
-            run_dir = "".join(sorted(self.elp_in))
+            run_dir = "".join(sorted([str(path) for path in self.elp_in]))
             run_dir = hashlib.sha1(run_dir.encode()).hexdigest()[:7]
             run_dir = pathlib.Path(self.out_dir or "out") / run_dir
             run_dir.mkdir(exist_ok=True, parents=True)
