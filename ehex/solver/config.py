@@ -38,6 +38,8 @@ class Config(types.SimpleNamespace):
         self.pp_out = run_dir / "positive.lp"
         self.lp_out = run_dir / "level.lp"
         self.elp_out = run_dir / "parsed.elp"
+        self.c_opt_out = run_dir / "c_opt.elp"
+        self.r_opt_out = run_dir / "r_opt.elp"
         if self.debug:
             print(f"Runtime directory: {run_dir}", file=sys.stderr)
 

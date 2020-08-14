@@ -127,11 +127,11 @@ def tokenize(text):
     return result
 
 
-def parse_answer_set(text):
+def parse_line(text):
     tokens = tokenize(text)
     return frozenset([model_token(token) for token in tokens])
 
 
-def parse_answer_sets(stream):
+def parse(stream):
     for line in stream:
-        yield parse_answer_set(line)
+        yield parse_line(line)

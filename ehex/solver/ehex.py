@@ -1,7 +1,8 @@
 import sys
 
 from ehex.parser import parse_elp_input
-from ehex.parser.asparser import parse_answer_sets
+from ehex.parser import asparser
+from ehex.parser import aspif
 from ehex.codegen import render
 from ehex.parser.models import auxmodel
 from ehex.solver import clingo
@@ -13,14 +14,15 @@ class Unsatisfiable(Exception):
     pass
 
 
-def solve(solver, src, out, cfg, **kws):
+def solve(solver, src, out, cfg, parser=asparser, **kws):
     if out and cfg.debug:
         with open(out, "w") as src_file:
             src_file.write(src)
         result = solver.main(str(out), debug=cfg.debug, **kws)
     else:
         result = solver.main(src=src, debug=cfg.debug, **kws)
-    return parse_answer_sets(result)
+
+    return parser.parse(result)
 
 
 def compute_envelope(elp_model, cfg):
@@ -42,11 +44,11 @@ def compute_consequences(elp_model, cfg, ground_atoms, guess_atoms):
     show_src = render.clingo_show_directives(atoms)
     reduct_src = render.generic_reduct(elp_model)
     g_src = render.guessing_program(ground_atoms, guess_atoms)
-    src = "\n\n".join(["% Compute consequences", show_src, reduct_src, g_src])
+    c_opt_src = "\n\n".join(["% Enum Program", show_src, reduct_src, g_src])
     kws = {
         "solver": clingo,
-        "src": src,
-        "out": None,
+        "src": c_opt_src,
+        "out": cfg.c_opt_out,
         "cfg": cfg,
         "project": "show",
     }
@@ -63,6 +65,48 @@ def compute_consequences(elp_model, cfg, ground_atoms, guess_atoms):
     brave_atoms = {atom.token: atom for atom in brave_atoms}
     cautious_atoms = {atom.token: atom for atom in cautious_atoms}
     return brave_atoms, cautious_atoms
+
+
+def ground_reduct(elp_model, cfg, ground_atoms, guess_atoms):
+    reduct_src = render.generic_reduct(elp_model)
+    g_src = render.guessing_program(ground_atoms, guess_atoms)
+    r_opt_src = "\n\n".join(["% Grounding program", reduct_src, g_src])
+    kws = {
+        "solver": clingo,
+        "src": r_opt_src,
+        "cfg": cfg,
+        "out": cfg.r_opt_out,
+        "mode": "gringo",
+        "output": "intermediate",
+    }
+    result = solve(parser=aspif, **kws)
+
+    def effective_atoms(stream):
+        body_atoms = set()
+        fact_atoms = set()
+        symbols = dict()
+        for stype, data in stream:
+            if stype == aspif.RULE:
+                _, (_, body) = data
+                body_atoms.update(abs(b) for b in body)
+            if stype == aspif.OUTPUT:
+                symbol, keys = data
+                if keys:
+                    symbols.update(dict.fromkeys(keys, symbol))
+                else:
+                    fact_atoms.add(symbol)
+        return (
+            fact_atoms,
+            (symbols[key] for key in body_atoms & symbols.keys()),
+        )
+
+    def aux_tokens(strings):
+        for s in strings:
+            if s.startswith(auxmodel.AuxTrue.name):
+                yield asparser.tokenize(s)[0]
+
+    fact_atoms, body_atoms = effective_atoms(result)
+    return {*aux_tokens(fact_atoms)}, {*aux_tokens(body_atoms)}
 
 
 def optimize(elp_model, cfg, ground_atoms, guess_atoms):
@@ -95,6 +139,35 @@ def optimize(elp_model, cfg, ground_atoms, guess_atoms):
 
         if _guess_atoms:
             ground_atoms = frozenset(_ground_atoms)
+            guess_atoms = guess_atoms.union(_guess_atoms)
+
+    if cfg.ground_reduct:
+        facts, bodies = ground_reduct(
+            elp_model, cfg, ground_atoms, guess_atoms
+        )
+        gnd_name = auxmodel.AuxGround.name
+        true_name = auxmodel.AuxTrue.name
+        naf_name = auxmodel.NAF_NAME
+        replace_args = (
+            (f"{gnd_name}_M_{naf_name}_", f"{true_name}_K_", 1),
+            (f"{gnd_name}_M_", f"{true_name}_M_", 1),
+        )
+        remove = []
+        _guess_atoms = []
+
+        for gnd in ground_atoms:
+            name, args = gnd.token
+            neg = gnd.args[0].literal.negation
+            name = name.replace(*replace_args[not neg])
+            key = (name, args)
+            if key in facts:
+                _guess_atoms.append(gnd.clone(model=auxmodel.AuxGuess))
+            elif key not in bodies:
+                remove.append(gnd)
+
+        if remove:
+            ground_atoms = ground_atoms.difference(remove)
+        if _guess_atoms:
             guess_atoms = guess_atoms.union(_guess_atoms)
 
     return ground_atoms, guess_atoms
