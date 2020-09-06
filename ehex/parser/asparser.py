@@ -7,8 +7,7 @@ from ehex.parser.models.auxmodel import PREFIX, NEG_NAME, NAF_NAME
 from ehex.utils import model
 from ehex.utils.decorators import cached
 
-PAT = re.compile(r'("(?:\\"|[^"])*"|[()])')
-SEP = re.compile(r"[{},.]|\s+")
+PAT = re.compile(r'(\w+|[()]|"(?:\\"|.)*?")')
 
 
 def model_aux_atom(name, args):
@@ -100,12 +99,10 @@ def model_token(token):
 def tokenize(text):
     # Adapted from http://stackoverflow.com/a/14715850
     stack = [[]]
-    for x in PAT.split(text):
-        if x.startswith('"'):
-            stack[-1].append(x)
-        elif x == "(":
+    for match in PAT.findall(text):
+        if match == "(":
             stack.append([])
-        elif x == ")":
+        elif match == ")":
             args = tuple(stack.pop())
             if not stack:
                 raise ValueError("opening bracket is missing")
@@ -115,11 +112,10 @@ def tokenize(text):
                 raise ValueError("expected name before opening bracket")
             stack[-1][-1] = (name, args)
         else:
-            stack[-1] += [s for s in SEP.split(x) if s]
+            stack[-1].append(match)
     if len(stack) > 1:
         raise ValueError("closing bracket is missing")
-    result = [(t, ()) if isinstance(t, str) else t for t in stack.pop()]
-    return result
+    return [(t, ()) if isinstance(t, str) else t for t in stack[0]]
 
 
 def parse_line(text):
