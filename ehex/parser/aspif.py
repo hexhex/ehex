@@ -1,3 +1,5 @@
+# https://www.cs.uni-potsdam.de/~torsten/hybris.pdf
+
 ASP = "asp"
 RULE = "1"
 OUTPUT = "4"
@@ -25,9 +27,9 @@ def handle_rule(data):
 def handle_output(data):
     m, data = data.split(None, 1)
     m = int(m)
-    s = data[:m]
-    n, *literals = [int(s) for s in data[m:].split()]
-    return (s, literals[:n])
+    symbol = data[:m]
+    n, *condition = [int(k) for k in data[m:].split()]
+    return (symbol, condition[:n])
 
 
 def handle_end():
