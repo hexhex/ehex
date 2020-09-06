@@ -1,5 +1,4 @@
-from ehex.parser.models import auxmodel
-from ehex.parser.models import elpmodel
+from ehex.parser.models import auxmodel, elpmodel
 
 
 def opposite(node):

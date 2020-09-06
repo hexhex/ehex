@@ -1,11 +1,8 @@
 import sys
 
+from ehex.codegen import auxgen, elpgen, rules
+from ehex.parser.models import auxmodel, elpmodel
 from ehex.utils import model
-from ehex.codegen import elpgen
-from ehex.codegen import auxgen
-from ehex.codegen import rules
-from ehex.parser.models import elpmodel
-from ehex.parser.models import auxmodel
 
 THIS_MODULE = sys.modules[__name__]
 

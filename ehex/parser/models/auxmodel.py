@@ -20,7 +20,7 @@ class AuxAtom(elpmodel.Atom):
 
 
 class AuxGuess(AuxAtom):
-    _name = "Guess"
+    _name = "G"
     name = PREFIX + _name
 
 

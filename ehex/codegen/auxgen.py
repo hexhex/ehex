@@ -1,12 +1,10 @@
 import sys
 
-from tatsu.codegen import ModelRenderer
-from tatsu.codegen import CodeGenerator
-
-from ehex.utils import model
 from ehex.codegen import elpgen
 from ehex.parser.models import elpmodel
-from ehex.parser.models.auxmodel import PREFIX, NAF_NAME
+from ehex.parser.models.auxmodel import NAF_NAME, PREFIX
+from ehex.utils import model
+from tatsu.codegen import CodeGenerator, ModelRenderer
 
 THIS_MODULE = sys.modules[__name__]
 
@@ -59,7 +57,7 @@ class ModalLiteral(ModelRenderer):
     def render_fields(self, fields):
         return self.aux_modal(**fields)
 
-    def aux_modal(self, modality, literal, **kws):
+    def aux_modal(self, modality, literal, **_):
         atom = self.rend(literal.atom)
         atom = model.strip_prefix(atom)
         if literal.negation:
@@ -95,12 +93,14 @@ class HEXExternalAtom(ModelRenderer):
 
 class HEXReasoningAtom(HEXExternalAtom):
     def render_fields(self, fields):
-        q = fields["query"]
+        query = fields["query"]
         in_args = [
             self.node.program_type,
             fields["program"],
             self.node.input_name,
-            model.clone_atom(q, args=[], no_constraint=True),
+            model.clone_atom(query, args=[], no_constraint=True),
         ]
-        fields.update(name=self.node.name, in_args=in_args, out_args=q.args)
+        fields.update(
+            name=self.node.name, in_args=in_args, out_args=query.args
+        )
         return super().render_fields(fields)

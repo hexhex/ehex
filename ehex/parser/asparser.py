@@ -1,9 +1,7 @@
 import re
 
-from ehex.parser.models import auxmodel
-from ehex.parser.models import elpmodel
-
-from ehex.parser.models.auxmodel import PREFIX, NEG_NAME, NAF_NAME
+from ehex.parser.models import auxmodel, elpmodel
+from ehex.parser.models.auxmodel import NAF_NAME, NEG_NAME, PREFIX
 from ehex.utils import model
 from ehex.utils.decorators import cached
 
@@ -26,7 +24,7 @@ def model_aux_atom(name, args):
         atom = model_atom(name, args)
         return elpmodel.StandardLiteral(negation="not", atom=atom)
 
-    if aux_name == "M" or aux_name == "K":
+    if aux_name in ("M", "K"):
         # M_Naf_Neg_a(...)
         modality = name[0]
         name = name[2:]
@@ -51,9 +49,8 @@ def model_aux_atom(name, args):
             name = name[len(aux_type._name) + 1 :]
             atom = model_atom(name, args)
             return aux_type(args=[atom])
-        else:
-            # Input(...)
-            return aux_type(args=args)
+        # Input(...)
+        return aux_type(args=args)
 
     raise ValueError(f'unknown auxiliary name "{name}"')
 

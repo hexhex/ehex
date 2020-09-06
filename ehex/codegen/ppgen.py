@@ -1,10 +1,8 @@
 import sys
 
+from ehex.codegen import auxgen, elpgen
+from ehex.parser.models import auxmodel, elpmodel
 from ehex.utils import model
-from ehex.codegen import auxgen
-from ehex.codegen import elpgen
-from ehex.parser.models import elpmodel
-from ehex.parser.models import auxmodel
 
 THIS_MODULE = sys.modules[__name__]
 
@@ -20,8 +18,8 @@ class Program(auxgen.Program):
         self.context.aux_rules.clear()
 
     def render_fields(self, fields):
-        rules = [r for r in self.transform_rules(fields["rules"])]
-        rules.extend(self.context.aux_rules)
+        rules = list(self.transform_rules(fields["rules"]))
+        rules += self.context.aux_rules
         fields.update(rules=rules)
 
     def transform_rules(self, rules):
@@ -32,15 +30,15 @@ class Program(auxgen.Program):
                 for literal in rule.body
                 if isinstance(literal, elpmodel.ModalLiteral)
             ]
-            body = [literal for literal in self.positive_literals(rule.body)]
-            self.context.aux_rules.extend(self.grounding_rules(modals, body))
+            body = list(self.positive_literals(rule.body))
+            self.context.aux_rules += self.grounding_rules(modals, body)
             if not head:
                 continue
             if isinstance(head, elpmodel.Disjunction):
                 for atom in head.atoms:
                     yield elpmodel.Rule(head=atom, body=body)
                 continue
-            elif isinstance(head, elpmodel.ChoiceAtom):
+            if isinstance(head, elpmodel.ChoiceAtom):
                 for element in head.elements:
                     yield elpmodel.Rule(
                         head=element.atom, body=body + element.literals
@@ -48,7 +46,8 @@ class Program(auxgen.Program):
                 continue
             yield rule
 
-    def grounding_rules(self, modals, body):
+    @staticmethod
+    def grounding_rules(modals, body):
         weak_modals = [model.weak_form(modal) for modal in modals]
         for modal in weak_modals:
             head = auxmodel.AuxGround(args=[modal])

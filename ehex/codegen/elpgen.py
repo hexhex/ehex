@@ -1,7 +1,6 @@
 import sys
 
-from tatsu.codegen import ModelRenderer
-from tatsu.codegen import CodeGenerator
+from tatsu.codegen import CodeGenerator, ModelRenderer
 
 THIS_MODULE = sys.modules[__name__]
 
@@ -64,7 +63,7 @@ class Atom(ModelRenderer):
         template = "{name}"
         fields.setdefault("name", self.node.name)
         if fields.get("negation"):
-            template = fields["negation"] + template
+            template = f"¬{template}"
         if fields["args"]:
             template += "({args::, :})"
         return template
