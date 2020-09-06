@@ -1,12 +1,12 @@
 import argparse
+import logging
 import os
 import signal
 import sys
 
+from ehex.solver import config, ehex
+from ehex.utils import solver
 from tatsu.exceptions import FailedParse
-
-from ehex.solver import ehex
-from ehex.solver import config
 
 
 def sigterm_handler(sig, *_):
@@ -86,28 +86,32 @@ def main():
         help="print debug information to <stderr> and write all "
         "intermediate programs to files in the output directory",
     )
-    cfg = parser.parse_args(namespace=config.Config())
 
-    try:
-        ehex.main(cfg)
-        sys.stdout.flush()
-    except BrokenPipeError:
-        # https://docs.python.org/3/library/signal.html#note-on-sigpipe
-        devnull = os.open(os.devnull, os.O_WRONLY)
-        os.dup2(devnull, sys.stdout.fileno())
-        sys.exit(1)
-    except FileNotFoundError as e:
-        msg = f"File not found: {e}"
-        print(msg, file=sys.stderr)
-        sys.exit(1)
-    except FailedParse as e:
-        msg = f"Parse error: {e}"
-        print(msg, file=sys.stderr)
-        sys.exit(1)
-    except ehex.Unsatisfiable:
-        msg = "Unsatisfiable"
-        print(msg, file=sys.stderr)
-        sys.exit(0)
+    args = parser.parse_args()
+    with config.setup(**vars(args)) as cfg:
+        logging.basicConfig(
+            level=cfg.log_level, format="%(levelname)s %(name)s: %(message)s",
+        )
+        try:
+            ehex.main()
+            sys.stdout.flush()
+        except BrokenPipeError:
+            # https://docs.python.org/3/library/signal.html#note-on-sigpipe
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, sys.stdout.fileno())
+            sys.exit(1)
+        except FileNotFoundError as e:
+            msg = f"File not found: {e}"
+            print(msg, file=sys.stderr)
+            sys.exit(1)
+        except FailedParse as e:
+            msg = f"Parse error: {e}"
+            print(msg, file=sys.stderr)
+            sys.exit(1)
+        except solver.Unsatisfiable:
+            msg = "Unsatisfiable"
+            print(msg, file=sys.stderr)
+            sys.exit(0)
 
 
 if __name__ == "__main__":
