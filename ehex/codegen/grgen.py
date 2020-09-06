@@ -65,5 +65,7 @@ class Rule(elpgen.Rule):
             key = model.key(true_modal)
             if key not in self.context.aux_true_keys:
                 self.context.aux_true_keys.add(key)
-                self.context.aux_rules.extend(rules.reduct_true(repl.atom))
+                self.context.aux_rules.extend(
+                    rules.replacement_rules(repl.atom)
+                )
             yield repl

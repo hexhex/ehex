@@ -1,12 +1,10 @@
-from ehex.parser.models import elpmodel
-from ehex.parser.models import auxmodel
-from ehex.parser.models import hexmodel
+from ehex.parser.models import auxmodel, elpmodel, hexmodel
 from ehex.utils import model
 
 
-def guessing_rules(ground_atoms):
+def guessing_rules(ground_facts, guessing_hints=False):
     seen = set()
-    for gnd in ground_atoms:
+    for gnd in ground_facts:
         key = model.key(gnd.args[0])
         if key in seen:
             continue
@@ -19,10 +17,12 @@ def guessing_rules(ground_atoms):
         neg_guess = guess.clone(negation="-")
         head = elpmodel.Disjunction(atoms=[guess, neg_guess])
         yield elpmodel.Rule(head=head, body=[gnd])
+        if guessing_hints:
+            yield elpmodel.Rule(head=guess, body=[modal.literal, gnd])
 
 
-def facts(atoms):
-    for atom in atoms:
+def fact_rules(facts):
+    for atom in facts:
         yield elpmodel.Rule(head=atom, body=[])
 
 
@@ -81,17 +81,17 @@ def checking_rules(ground_atoms, reduct_out):
             yield elpmodel.Rule(head=None, body=[gnd, neg_guess, auxb])
 
 
-def cardinality_check(level):
+def cardinality_check(guess_size):
     atom = auxmodel.AuxGuess(args=["M"])
     element = elpmodel.AggregateElement(terms=["M"], literals=[atom])
     count = elpmodel.AggregateAtom(
-        name="#count", elements=[element], right_rel="=", right=level,
+        name="#count", elements=[element], right_rel="=", right=guess_size,
     )
     naf_count = elpmodel.StandardLiteral(negation="not", atom=count)
     yield elpmodel.Rule(head=None, body=[naf_count])
 
 
-def subset_check(level):
+def subset_check():
     guess = auxmodel.AuxGuess(args=["M"])
     member = auxmodel.AuxMember(args=["_", "S"])
     naf_member = elpmodel.StandardLiteral(
@@ -106,19 +106,18 @@ def subset_check(level):
     yield elpmodel.Rule(head=None, body=[count, member])
 
 
-def member_facts(omega):
+def member_rules(omega):
     for j, guess in enumerate(omega):
-        k = len(guess)
-        for modal in guess:
-            name = f'"world{j+1}@{k}"'
-            yield elpmodel.Rule(
-                head=auxmodel.AuxMember(args=[modal, name]), body=[]
-            )
+        atoms = [
+            auxmodel.AuxMember(args=[atom.args[0], f"world{j+1}"])
+            for atom in guess
+        ]
+        yield from fact_rules(atoms)
 
 
-def reduct_true(aux_true):
-    modal = model.clone_literal(aux_true.args[0])
-    aux_true = aux_true.clone(args=[modal])
+def replacement_rules(repl):
+    modal = model.clone_literal(repl.args[0])
+    repl = repl.clone(args=[modal])
     atom = modal.literal.atom
     atom.args = [f"T{i+1}" for i in range(len(atom.args))]
     weak_modal = model.weak_form(modal)
@@ -126,7 +125,25 @@ def reduct_true(aux_true):
     neg_guess = guess.opposite()
 
     if modal.modality == "M":
-        yield elpmodel.Rule(head=aux_true, body=[guess])
-        yield elpmodel.Rule(head=aux_true, body=[atom, neg_guess])
+        yield elpmodel.Rule(head=repl, body=[guess])
+        yield elpmodel.Rule(head=repl, body=[atom, neg_guess])
     if modal.modality == "K":
-        yield elpmodel.Rule(head=aux_true, body=[atom, neg_guess])
+        yield elpmodel.Rule(head=repl, body=[atom, neg_guess])
+
+
+def optimized_replacement_rules(guess_facts):
+    for atom in guess_facts:
+        modal = atom.args[0]
+        literal = modal.literal
+        if atom.negation:
+            if literal.negation:
+                # for ¬guess(M not α) yield true(K α) ← α.
+                repl = auxmodel.AuxTrue(args=[model.opposite(modal)])
+            else:
+                # for ¬guess(M α) yield true(M α) ← α.
+                repl = auxmodel.AuxTrue(args=[modal])
+            yield elpmodel.Rule(head=repl, body=[literal.atom])
+        elif not literal.negation:
+            # for guess(M α) yield true(M α).
+            repl = auxmodel.AuxTrue(args=[modal])
+            yield elpmodel.Rule(head=repl, body=[])
