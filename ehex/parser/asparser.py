@@ -5,8 +5,8 @@ from ehex.parser.models import elpmodel
 
 from ehex.parser.models.auxmodel import PREFIX, NEG_NAME, NAF_NAME
 from ehex.utils import model
+from ehex.utils.decorators import cached
 
-parse_cache = {}
 PAT = re.compile(r'("(?:\\"|[^"])*"|[()])')
 SEP = re.compile(r"[{},.]|\s+")
 
@@ -90,15 +90,10 @@ def model_args(token):
     return name, [model_term(*model_args(a)) for a in args]
 
 
+@cached
 def model_token(token):
-    try:
-        return parse_cache[token]
-    except KeyError:
-        pass
-
     atom = model_atom(*model_args(token))
     atom.token = token
-    parse_cache[token] = atom
     return atom
 
 
