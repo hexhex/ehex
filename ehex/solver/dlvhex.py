@@ -1,18 +1,20 @@
 import shutil
-import sys
-from subprocess import Popen, PIPE, DEVNULL
+from subprocess import DEVNULL, PIPE, Popen
 
+from ehex.solver.config import cfg
+from ehex.utils import logging
 from ehex.utils.sys import check_status
 
-DLVHEX = "dlvhex2"
+SOLVER = "dlvhex2"
+logger = logging.get_logger(__name__)
 
 
 def main(
-    *files, src=None, pfilter=None, number=0, debug=False, **options,
+    *files, src=None, pfilter=None, number=0, **options,
 ):
-    executable = shutil.which(DLVHEX)
+    executable = shutil.which(SOLVER)
     if executable is None:
-        raise FileNotFoundError(f"could not locate {DLVHEX} executable")
+        raise FileNotFoundError(f"could not locate {SOLVER} executable")
 
     if pfilter:
         pfilter = ",".join(pfilter)
@@ -35,14 +37,14 @@ def main(
     flags = [f"--{name}" for name in flags]
     options = [f"--{key}={value}" for key, value in options.items()]
     args = [executable, *flags, *options, *files]
-    if debug:
-        cmd = "{} {}".format(executable, " \\\n\t".join(args[1:]))
-        print(cmd, file=sys.stderr)
+    if cfg.debug:
+        logger.debug("{} {}", executable, " \\\n\t".join(args[1:]))
+
     with Popen(
         args,
         stdin=PIPE,
         stdout=PIPE,
-        stderr=None if debug else DEVNULL,
+        stderr=PIPE if cfg.debug else DEVNULL,
         text=True,
     ) as proc:
         if src:
@@ -50,5 +52,9 @@ def main(
                 stdin.write(src)
         for line in proc.stdout:
             yield line
+        if cfg.debug:
+            msg = proc.stderr.read().rstrip()
+            if msg:
+                logger.debug("{}.stderr:\n{}", SOLVER, msg)
 
     check_status(proc)
