@@ -4,9 +4,10 @@ import os
 import signal
 import sys
 
+from tatsu.exceptions import FailedParse
+
 from ehex.solver import config, ehex
 from ehex.utils import solver
-from tatsu.exceptions import FailedParse
 
 
 def sigterm_handler(sig, *_):
@@ -100,17 +101,17 @@ def main():
             devnull = os.open(os.devnull, os.O_WRONLY)
             os.dup2(devnull, sys.stdout.fileno())
             sys.exit(1)
+        except KeyboardInterrupt:
+            print("Interrupted", file=sys.stderr)
+            sys.exit(0)
         except FileNotFoundError as e:
-            msg = f"File not found: {e}"
-            print(msg, file=sys.stderr)
+            print(f"File not found: {e}", file=sys.stderr)
             sys.exit(1)
         except FailedParse as e:
-            msg = f"Parse error: {e}"
-            print(msg, file=sys.stderr)
+            print(f"Parse error: {e}", file=sys.stderr)
             sys.exit(1)
         except solver.Unsatisfiable:
-            msg = "Unsatisfiable"
-            print(msg, file=sys.stderr)
+            print("Unsatisfiable", file=sys.stderr)
             sys.exit(0)
 
 
