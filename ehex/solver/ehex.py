@@ -37,8 +37,19 @@ def ehex():
     if cfg.ground_reduct:
         facts = optimize.with_reduct(elp, facts)
 
-    min_size = 0
-    max_size = len(facts.ground)
+    if cfg.planning_mode:
+        try:
+            horizon = next(
+                int(a.args[0]) for a in atoms if a.name == "horizon"
+            )
+        except (StopIteration, ValueError):
+            raise solver.AssumptionError(
+                "expected an atom of the form 'horizon(N)' in the input program"
+            )
+        min_size = max_size = horizon + 1
+    else:
+        min_size = 0
+        max_size = len(facts.ground)
     omega = frozenset()
     pfilter = {
         model.neg_name(atom.name) if atom.negation else atom.name

@@ -70,12 +70,12 @@ def guessing_program(
                 ground_facts, guessing_hints=guessing_hints
             ),
             "% Ground Facts",
-            *generate.fact_rules(ground_facts),
+            *generate.facts(ground_facts),
         ]
     if guess_true_facts:
         elements += [
             "% Guessing Facts",
-            *generate.fact_rules(guess_true_facts),
+            *generate.facts(guess_true_facts),
         ]
     return aux_program(elements)
 
@@ -167,6 +167,11 @@ def level_program(
         )
     if facts.ground:
         elements.append(checking_program(facts.ground, reduct_out))
+    if cfg.planning_mode:
+        elements += [
+            "% Planning Mode Guessing Rules",
+            *generate.planning_mode_guessing_rules(),
+        ]
 
     elements.append(level_check(context))
     return aux_program(elements)

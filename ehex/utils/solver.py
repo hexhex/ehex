@@ -11,6 +11,10 @@ class Unsatisfiable(Exception):
     pass
 
 
+class AssumptionError(RuntimeError):
+    pass
+
+
 Facts = namedtuple(
     "Facts",
     ["ground", "guess_true", "guess_false"],

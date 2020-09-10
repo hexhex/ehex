@@ -27,8 +27,8 @@ def guessing_rules(ground_facts, guessing_hints=False):
             )
 
 
-def fact_rules(facts):
-    for atom in facts:
+def facts(atoms):
+    for atom in atoms:
         yield elpmodel.Rule(head=atom, body=[])
 
 
@@ -124,7 +124,7 @@ def member_rules(omega):
             auxmodel.AuxMember(args=[atom.args[0], f"world{j+1}"])
             for atom in guess
         ]
-        yield from fact_rules(atoms)
+        yield from facts(atoms)
 
 
 def negation_constraints(keys):
@@ -133,3 +133,20 @@ def negation_constraints(keys):
         atom = elpmodel.Atom(name=name, args=args)
         natom = model.clone_atom(atom, negation="-")
         yield elpmodel.Rule(head=None, body=[atom, natom])
+
+
+def planning_mode_guessing_rules():
+    goal_atom = elpmodel.Atom(name="goal", args=[])
+    modal1 = elpmodel.ModalLiteral(
+        modality="M",
+        literal=elpmodel.StandardLiteral(atom=goal_atom, negation="not"),
+    )
+    modal2 = elpmodel.ModalLiteral(
+        modality="M", literal=elpmodel.StandardLiteral(atom=goal_atom)
+    )
+    yield from facts(
+        [
+            auxmodel.AuxGuess(args=[modal1], negation="-"),
+            auxmodel.AuxGuess(args=[modal2]),
+        ]
+    )

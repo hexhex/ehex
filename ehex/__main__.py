@@ -91,7 +91,7 @@ def main():
     args = parser.parse_args()
     with config.setup(**vars(args)) as cfg:
         logging.basicConfig(
-            level=cfg.log_level, format="%(levelname)s %(name)s: %(message)s",
+            level=cfg.log_level, format="%(levelname)s %(name)s: %(message)s"
         )
         try:
             ehex.main()
@@ -113,6 +113,9 @@ def main():
         except solver.Unsatisfiable:
             print("Unsatisfiable", file=sys.stderr)
             sys.exit(0)
+        except solver.AssumptionError as e:
+            print(f"Assumption error: {e}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":
