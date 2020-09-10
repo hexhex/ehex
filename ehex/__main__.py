@@ -62,7 +62,7 @@ def main():
         "-s",
         "--sat-mode",
         action="store_true",
-        help="check if input is satisfiable and exit",
+        help="check if input is satisfiable and exit, implies -c",
     )
     parser.add_argument(
         "-d",

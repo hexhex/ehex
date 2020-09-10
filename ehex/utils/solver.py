@@ -68,7 +68,7 @@ def format_solutions(evaluation_level, solutions):
         if first_guess is None:
             first_guess = guess
             yield header(1, guess)
-            if cfg.sat_check:
+            if cfg.sat_mode:
                 continue
         if guess == first_guess:
             yield render.answer_set(ans)

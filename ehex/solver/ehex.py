@@ -10,7 +10,7 @@ logger = logging.get_logger(__name__)
 
 def solve(omega, src, out, pfilter, guess_true_facts=None):
     for solution in solver.solve(
-        dlvhex, src, out=out, pfilter=pfilter, number=int(cfg.sat_check)
+        dlvhex, src, out=out, pfilter=pfilter, number=int(cfg.sat_mode)
     ):
         guess, ans = solver.split_solution(solution)
         omega.add(guess)
@@ -18,7 +18,7 @@ def solve(omega, src, out, pfilter, guess_true_facts=None):
             guess = guess.union(guess_true_facts)
 
         yield (guess, ans)
-        if cfg.sat_check:
+        if cfg.sat_mode:
             raise solver.Satisfiable
 
 

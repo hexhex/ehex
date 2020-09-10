@@ -22,7 +22,7 @@ class Config(types.SimpleNamespace):
         log_level = logging.WARNING
     stdout = sys.stdout
     tmp_dir = None
-    sat_check = False
+    sat_mode = False
 
     def setup(self, /, **kws):
         self.__dict__.update(**kws)
@@ -30,6 +30,8 @@ class Config(types.SimpleNamespace):
         if self.debug:
             self.stdout = self.path.worlds_out.open("w")
             self.log_level = logging.DEBUG
+        if self.sat_mode:
+            self.compute_consequences = True
         return self
 
     def setup_paths(self):
