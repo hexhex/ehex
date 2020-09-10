@@ -75,10 +75,10 @@ def main():
         help="enable optimizations specific to planning problems",
     )
     parser.add_argument(
-        "-a",
-        "--all-optimizations",
+        "-s",
+        "--sat-mode",
         action="store_true",
-        help="enable all optimizations, this is equivalent to -cgrp",
+        help="check if input is satisfiable and exit",
     )
     parser.add_argument(
         "-d",
@@ -110,8 +110,11 @@ def main():
         except FailedParse as e:
             print(f"Parse error: {e}", file=sys.stderr)
             sys.exit(1)
+        except solver.Satisfiable:
+            print("Satisfiable")
+            sys.exit(0)
         except solver.Unsatisfiable:
-            print("Unsatisfiable", file=sys.stderr)
+            print("Unsatisfiable")
             sys.exit(0)
         except solver.AssumptionError as e:
             print(f"Assumption error: {e}", file=sys.stderr)

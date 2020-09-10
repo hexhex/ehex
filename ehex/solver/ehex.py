@@ -9,12 +9,17 @@ logger = logging.get_logger(__name__)
 
 
 def solve(omega, src, out, pfilter, guess_true_facts=None):
-    for solution in solver.solve(dlvhex, src, out=out, pfilter=pfilter):
+    for solution in solver.solve(
+        dlvhex, src, out=out, pfilter=pfilter, number=int(cfg.sat_check)
+    ):
         guess, ans = solver.split_solution(solution)
         omega.add(guess)
         if guess_true_facts:
             guess = guess.union(guess_true_facts)
+
         yield (guess, ans)
+        if cfg.sat_check:
+            raise solver.Satisfiable
 
 
 def ehex():

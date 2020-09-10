@@ -22,6 +22,7 @@ class Config(types.SimpleNamespace):
         log_level = logging.WARNING
     stdout = sys.stdout
     tmp_dir = None
+    sat_check = False
 
     def setup(self, /, **kws):
         self.__dict__.update(**kws)

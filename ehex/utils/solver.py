@@ -11,6 +11,10 @@ class Unsatisfiable(Exception):
     pass
 
 
+class Satisfiable(Exception):
+    pass
+
+
 class AssumptionError(RuntimeError):
     pass
 
@@ -64,6 +68,8 @@ def format_solutions(evaluation_level, solutions):
         if first_guess is None:
             first_guess = guess
             yield header(1, guess)
+            if cfg.sat_check:
+                continue
         if guess == first_guess:
             yield render.answer_set(ans)
         else:
