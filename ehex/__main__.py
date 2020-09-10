@@ -18,29 +18,13 @@ def sigterm_handler(sig, *_):
 def main():
     signal.signal(signal.SIGTERM, sigterm_handler)
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(argument_default=argparse.SUPPRESS)
     parser.add_argument(
         "elp_in",
         nargs="*",
         metavar="FILE",
         help='input file; read from <stdin> if %(metavar)s="-" or if no '
         "file is given",
-    )
-    parser.add_argument(
-        "-m",
-        "--models",
-        metavar="N",
-        default=0,
-        help="limit the number of printed models per world view to %(metavar)s "
-        "(N=0 means all) (default is %(default)s)",
-    ),
-    parser.add_argument(
-        "-n",
-        "--world-views",
-        metavar="N",
-        default=1,
-        help="limit the number of printed world views to %(metavar)s "
-        "(N=0 means all) (default is %(default)s)",
     )
     parser.add_argument(
         "-o",
@@ -56,13 +40,13 @@ def main():
         help="compute brave and cautious consequences to reduce guesswork",
     )
     parser.add_argument(
-        "-g",
+        "-gh",
         "--guessing-hints",
         action="store_true",
         help="add guessing hint rules to optimize guessing",
     )
     parser.add_argument(
-        "-r",
+        "-gr",
         "--ground-reduct",
         action="store_true",
         help="compute a possibly smaller set of ground modal literals "
