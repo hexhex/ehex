@@ -9,17 +9,13 @@ SOLVER = "dlvhex2"
 logger = logging.get_logger(__name__)
 
 
-def main(
-    *files, src=None, pfilter=None, number=0, **options,
-):
+def main(*files, src="", pfilter=None, number=0, **options):
     executable = shutil.which(SOLVER)
     if executable is None:
         raise FileNotFoundError(f"could not locate {SOLVER} executable")
 
     if pfilter:
         pfilter = ",".join(pfilter)
-    if src:
-        files = [*files, "--"]
 
     options.update(filter=pfilter, number=number, silent=True)
 
@@ -36,9 +32,9 @@ def main(
 
     flags = [f"--{name}" for name in flags]
     options = [f"--{key}={value}" for key, value in options.items()]
-    args = [executable, *flags, *options, *files]
+    args = [executable, *flags, *options, *files, "--"]
     if cfg.debug:
-        logger.debug("{} {}", executable, " \\\n\t".join(args[1:]))
+        logger.debug("solving...\n{} {}", executable, " \\\n\t".join(args[1:]))
 
     with Popen(
         args,
@@ -47,9 +43,8 @@ def main(
         stderr=PIPE if cfg.debug else DEVNULL,
         text=True,
     ) as proc:
-        if src:
-            with proc.stdin as stdin:
-                stdin.write(src)
+        with proc.stdin as stdin:
+            stdin.write(src)
         for line in proc.stdout:
             yield line
         if cfg.debug:

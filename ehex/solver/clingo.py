@@ -12,9 +12,7 @@ SOLVER = "clingo"
 logger = logging.get_logger(__name__)
 
 
-def main(
-    *files, src=None, quiet=None, models=None, **options,
-):
+def main(*files, src="", quiet=None, models=None, **options):
     executable = shutil.which(SOLVER)
     if executable is None:
         raise FileNotFoundError(f"could not locate {SOLVER} executable")
@@ -24,8 +22,6 @@ def main(
             quiet = 1
         else:
             quiet = 0
-    if src:
-        files = [*files, "-"]
     mode = options.get("mode")
     if models is None and mode != "gringo":
         models = 0
@@ -45,9 +41,9 @@ def main(
 
     flags = [f"--{name}" for name in flags]
     options = [f"--{key}={value}" for key, value in options.items()]
-    args = [executable, *flags, *options, *files]
+    args = [executable, *flags, *options, *files, "-"]
     if cfg.debug:
-        logger.debug("{} {}", executable, " \\\n\t".join(args[1:]))
+        logger.debug("solving...\n{} {}", executable, " \\\n\t".join(args[1:]))
 
     with Popen(
         args,
@@ -56,9 +52,8 @@ def main(
         stderr=PIPE if cfg.debug else DEVNULL,
         text=True,
     ) as proc:
-        if src:
-            with proc.stdin as stdin:
-                stdin.write(src)
+        with proc.stdin as stdin:
+            stdin.write(src)
         if mode == "gringo":
             yield from proc.stdout
         else:
