@@ -85,9 +85,7 @@ def with_consequences(elp, facts, context=None):
 
 
 def ground_reduct(elp, facts):
-    opt_reduct_src = render.grounding_program(
-        elp, facts, guessing_hints=cfg.guessing_hints
-    )
+    opt_reduct_src = render.grounding_program(elp, facts)
     result = solver.solve(
         clingo,
         opt_reduct_src,

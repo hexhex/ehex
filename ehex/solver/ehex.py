@@ -85,7 +85,6 @@ def ehex():
             context,
             reduct_out,
             guess_true_facts=k_facts.guess_true - facts.guess_true,
-            guessing_hints=cfg.guessing_hints,
         )
 
         k_omega = set()
@@ -102,7 +101,7 @@ def ehex():
         if k_omega:
             omega = omega.union(k_omega)
             logger.info(
-                "Found {} world view(s) at level {}", len(k_omega), level,
+                "Found {} world view(s) at level {}", len(k_omega), level
             )
         else:
             logger.info("No world view found at level {}", level)

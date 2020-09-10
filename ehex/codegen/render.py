@@ -1,41 +1,60 @@
+from ehex.codegen import grgen, ppgen
 from ehex.codegen import rules as generate
 from ehex.codegen.auxgen import ELPAuxGenerator
 from ehex.codegen.elpgen import ELPGenerator
-from ehex.codegen.grgen import GenericReductGenerator
+from ehex.solver.config import cfg
 from ehex.utils import model
 from ehex.utils.decorators import cached
 
-auxrender = ELPAuxGenerator().render
-elprender = ELPGenerator().render
+_elpgen = ELPGenerator()
+_auxgen = ELPAuxGenerator()
 
 
 @cached
-def _generic_reduct(elp):
-    return GenericReductGenerator().render(elp)
+def elprender(obj):
+    return _elpgen.render(obj)
 
 
 @cached
-def aux_rule(rule):
-    return auxrender(rule)
+def auxrender(obj):
+    return _auxgen.render(obj)
 
 
 def aux_program(elements):
-    return "\n\n".join(
-        [e if isinstance(e, str) else aux_rule(e) for e in elements]
-    )
+    with _auxgen:
+        elements = [
+            e if isinstance(e, str) else auxrender(e) for e in elements
+        ]
+        if _auxgen.negations:
+            elements += [
+                auxrender(e)
+                for e in generate.negation_constraints(_auxgen.negations)
+            ]
+    return "\n\n".join(elements)
 
 
-def generic_reduct(elp, guess_true_facts=None, guess_false_facts=None):
-    elements = ["% Generic Epistemic Reduct", _generic_reduct(elp)]
+def positive_program(elp):
+    with _auxgen:
+        elements = [auxrender(e) for e in ppgen.positive_program(elp)]
+    return "\n\n".join(elements)
+
+
+def generic_reduct(
+    elp, guess_true_facts=None, guess_false_facts=None, guessing_hints=False
+):
+    elements = [
+        "% Generic Epistemic Reduct",
+        *grgen.generic_reduct(elp, guessing_hints=guessing_hints),
+    ]
     if guess_true_facts:
         elements += [
             "% Replacement Rules for True Modals",
-            *generate.optimized_replacement_rules(guess_true_facts),
+            *grgen.optimized_replacement_rules(guess_true_facts),
         ]
     if guess_false_facts:
         elements += [
             "% Replacement Rules for False Modals",
-            *generate.optimized_replacement_rules(guess_false_facts),
+            *grgen.optimized_replacement_rules(guess_false_facts),
         ]
     return aux_program(elements)
 
@@ -99,18 +118,25 @@ def enum_program(elp, facts, context=None):
         "%% Enum Program",
         clingo_show_directives(facts.ground),
         guessing_program(facts.ground, guessing_hints=False),
-        generic_reduct(elp, facts.guess_true, facts.guess_false),
+        generic_reduct(
+            elp, facts.guess_true, facts.guess_false, guessing_hints=False
+        ),
     ]
     if context:
         elements.append(level_check(context))
     return aux_program(elements)
 
 
-def grounding_program(elp, facts, guessing_hints=False):
+def grounding_program(elp, facts):
     elements = [
         "% Grounding Program",
-        guessing_program(facts.ground, guessing_hints=guessing_hints),
-        generic_reduct(elp, facts.guess_true, facts.guess_false),
+        guessing_program(facts.ground, guessing_hints=cfg.guessing_hints),
+        generic_reduct(
+            elp,
+            facts.guess_true,
+            facts.guess_false,
+            guessing_hints=cfg.guessing_hints,
+        ),
     ]
     return aux_program(elements)
 
@@ -121,18 +147,22 @@ def level_program(
     context,
     reduct_out,
     guess_true_facts=None,
-    guessing_hints=False,
 ):
     elements = [
         f"%% Level {context.level} Program",
-        generic_reduct(elp, facts.guess_true, facts.guess_false),
+        generic_reduct(
+            elp,
+            facts.guess_true,
+            facts.guess_false,
+            guessing_hints=cfg.guessing_hints,
+        ),
     ]
     if facts.ground or guess_true_facts:
         elements.append(
             guessing_program(
                 facts.ground,
                 guess_true_facts=guess_true_facts,
-                guessing_hints=guessing_hints,
+                guessing_hints=cfg.guessing_hints,
             ),
         )
     if facts.ground:
@@ -142,12 +172,7 @@ def level_program(
     return aux_program(elements)
 
 
-@cached
-def ans_atom(atom):
-    return elprender(atom)
-
-
 def answer_set(elements):
-    elements = [ans_atom(e) for e in elements]
+    elements = [elprender(e) for e in elements]
     elements.sort()
     return f"{{{', '.join(elements)}}}"

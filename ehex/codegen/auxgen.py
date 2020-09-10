@@ -1,10 +1,10 @@
 import sys
 
+from tatsu.codegen import CodeGenerator, ModelRenderer
+
 from ehex.codegen import elpgen
-from ehex.parser.models import elpmodel
 from ehex.parser.models.auxmodel import NAF_NAME, PREFIX
 from ehex.utils import model
-from tatsu.codegen import CodeGenerator, ModelRenderer
 
 THIS_MODULE = sys.modules[__name__]
 
@@ -14,19 +14,14 @@ class ELPAuxGenerator(CodeGenerator):
         if modules is None:
             modules = [elpgen, THIS_MODULE]
         super().__init__(modules=modules)
-        self.aux_neg_keys = set()
-        self.aux_rules = []
+        self.negations = set()
 
+    def __enter__(self):
+        self.negations.clear()
+        return self
 
-class Program(elpgen.Program):
-    def __init__(self, *args, **kws):
-        super().__init__(*args, **kws)
-        self.context.aux_neg_keys.clear()
-        self.context.aux_rules.clear()
-
-    def render_fields(self, fields):
-        rules = [self.rend(rule) for rule in fields["rules"]]
-        fields.update(rules=rules + self.context.aux_rules)
+    def __exit__(self, *_):
+        self.negations.clear()
 
 
 class Atom(elpgen.Atom):
@@ -36,21 +31,9 @@ class Atom(elpgen.Atom):
         return super().render_fields(fields)
 
     def handle_neg(self, fields):
-        name = fields["name"]
-        args = fields["args"]
         if not fields.get("no_constraint"):
-            key = (name, len(args))
-            if key not in self.context.aux_neg_keys:
-                self.context.aux_neg_keys.add(key)
-                self.context.aux_rules.append(self.aux_neg_rule(*key))
-        fields.update(negation=None, name=model.neg_name(name))
-
-    @staticmethod
-    def aux_neg_rule(name, arity):
-        args = [f"T{i+1}" for i in range(arity)]
-        atom = elpmodel.Atom(name=name, args=args)
-        natom = model.clone_atom(atom, negation="-")
-        return elpmodel.Rule(head=None, body=[atom, natom])
+            self.context.negations.add((fields["name"], len(fields["args"])))
+        fields.update(negation=None, name=model.neg_name(fields["name"]))
 
 
 class ModalLiteral(ModelRenderer):

@@ -1,7 +1,6 @@
 from collections import namedtuple
 
 from ehex.codegen import render
-from ehex.codegen.ppgen import PositiveProgramGenerator
 from ehex.parser import asparser
 from ehex.parser.models import auxmodel
 from ehex.solver import clingo
@@ -18,7 +17,7 @@ Facts = namedtuple(
     defaults=[frozenset(), frozenset()],
 )
 
-Context = namedtuple("Context", ["guess_size", "omega", "level"],)
+Context = namedtuple("Context", ["guess_size", "omega", "level"])
 
 
 def solve(solver, src, out=None, parse=asparser.parse, **kws):
@@ -33,7 +32,7 @@ def solve(solver, src, out=None, parse=asparser.parse, **kws):
 
 
 def compute_envelope(elp):
-    pp_src = PositiveProgramGenerator().render(elp)
+    pp_src = render.positive_program(elp)
     atoms = frozenset(next(solve(clingo, pp_src, out=cfg.path.pp_out)))
     ground_atoms = frozenset(
         atom for atom in atoms if isinstance(atom, auxmodel.AuxGround)
