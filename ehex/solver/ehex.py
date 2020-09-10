@@ -1,5 +1,5 @@
 from ehex.codegen import render
-from ehex.parser import parse_elp_input
+from ehex.parser import elpinput
 from ehex.parser.models import auxmodel
 from ehex.solver import dlvhex, optimize
 from ehex.solver.config import cfg
@@ -18,7 +18,7 @@ def solve(omega, src, out, pfilter, guess_true_facts=None):
 
 
 def ehex():
-    elp = parse_elp_input(*cfg.elp_in or [])
+    elp = elpinput.parse(*cfg.elp_in or [])
     atoms, facts = solver.compute_envelope(elp)
 
     if cfg.debug:
