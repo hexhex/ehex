@@ -6,6 +6,8 @@ import tempfile
 import types
 from contextlib import contextmanager
 
+ASP_SEMANTICS = ("FLP", "NEX")
+
 
 class Config(types.SimpleNamespace):
     debug = False
@@ -23,6 +25,7 @@ class Config(types.SimpleNamespace):
     stdout = sys.stdout
     tmp_dir = None
     sat_mode = False
+    reduct_semantics = ASP_SEMANTICS[0]
 
     def setup(self, /, **kws):
         self.__dict__.update(**kws)

@@ -23,15 +23,15 @@ def main():
         "elp_in",
         nargs="*",
         metavar="FILE",
-        help='input file; read from <stdin> if %(metavar)s="-" or if no '
-        "file is given",
+        help="""input file; read from <stdin> if %(metavar)s is '-' or if
+        no file is given""",
     )
     parser.add_argument(
         "-o",
         "--out-dir",
         metavar="DIR",
-        help="output directory for intermediate files (default is  a "
-        'temporary directory or "out" in debug mode)',
+        help="""base directory for intermediate files (default is  a
+        temporary directory or 'out' in debug mode)""",
     )
     parser.add_argument(
         "-c",
@@ -49,8 +49,8 @@ def main():
         "-gr",
         "--ground-reduct",
         action="store_true",
-        help="compute a possibly smaller set of ground modal literals "
-        "by grounding the generic epistemic reduct",
+        help="""compute a possibly smaller set of ground modal literals
+        by grounding the generic epistemic reduct""",
     )
     parser.add_argument(
         "-p",
@@ -62,14 +62,25 @@ def main():
         "-s",
         "--sat-mode",
         action="store_true",
-        help="check if input is satisfiable and exit, implies -c",
+        help="check if input is satisfiable and exit; implies -c",
+    )
+    parser.add_argument(
+        "-rs",
+        "--reduct-semantics",
+        choices=config.ASP_SEMANTICS,
+        type=str.upper,
+        help="""select the ASP semantics to be used for the Epistemic
+        Reduct: the choice 'FLP' corresponds to the FLP answer set
+        semantics, and the choice 'NEX' corresponds to the answer set
+        semantics of programs with nested expressions, i.e., expressions
+        of the form 'not not a' over an atom 'a' (default is FLP)""",
     )
     parser.add_argument(
         "-d",
         "--debug",
         action="store_true",
-        help="print debug information to <stderr> and write all "
-        "intermediate programs to files in the output directory",
+        help="""set log level to DEBUG  and write generated intermediate
+        programs to files in the specified output directory""",
     )
 
     args = parser.parse_args()
@@ -80,6 +91,12 @@ def main():
         try:
             ehex.main()
             sys.stdout.flush()
+        except solver.Satisfiable:
+            print("Satisfiable")
+            sys.exit(0)
+        except solver.Unsatisfiable:
+            print("Unsatisfiable")
+            sys.exit(0)
         except BrokenPipeError:
             # https://docs.python.org/3/library/signal.html#note-on-sigpipe
             devnull = os.open(os.devnull, os.O_WRONLY)
@@ -94,12 +111,6 @@ def main():
         except FailedParse as e:
             print(f"Parse error: {e}", file=sys.stderr)
             sys.exit(1)
-        except solver.Satisfiable:
-            print("Satisfiable")
-            sys.exit(0)
-        except solver.Unsatisfiable:
-            print("Unsatisfiable")
-            sys.exit(0)
         except solver.AssumptionError as e:
             print(f"Assumption error: {e}", file=sys.stderr)
             sys.exit(1)
