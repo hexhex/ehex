@@ -70,20 +70,20 @@ def checking_rules(ground_atoms, reduct_out):
         if modal.literal.negation:
             hexc = hexmodel.HEXCautiousAtom(program=program, query=atom)
             auxc = auxmodel.AuxCautious(args=[atom])
-            naf_auxc = elpmodel.StandardLiteral(negation="not", atom=auxc)
+            not_auxc = elpmodel.StandardLiteral(negation="not", atom=auxc)
 
             yield elpmodel.Rule(head=auxc, body=[gnd, atom, hexc])
             yield elpmodel.Rule(head=None, body=[gnd, guess, auxc])
-            yield elpmodel.Rule(head=None, body=[gnd, neg_guess, naf_auxc])
+            yield elpmodel.Rule(head=None, body=[gnd, neg_guess, not_auxc])
         else:
             hexb = hexmodel.HEXBraveAtom(program=program, query=atom)
             auxb = auxmodel.AuxBrave(args=[atom])
-            nauf_auxb = elpmodel.StandardLiteral(negation="not", atom=auxb)
-            naf_atom = elpmodel.StandardLiteral(negation="not", atom=atom)
+            not_auxb = elpmodel.StandardLiteral(negation="not", atom=auxb)
+            not_atom = elpmodel.StandardLiteral(negation="not", atom=atom)
 
-            yield elpmodel.Rule(head=auxb, body=[gnd, naf_atom, hexb])
+            yield elpmodel.Rule(head=auxb, body=[gnd, not_atom, hexb])
             yield elpmodel.Rule(head=auxb, body=[gnd, atom])
-            yield elpmodel.Rule(head=None, body=[gnd, guess, nauf_auxb])
+            yield elpmodel.Rule(head=None, body=[gnd, guess, not_auxb])
             yield elpmodel.Rule(head=None, body=[gnd, neg_guess, auxb])
 
 
@@ -96,18 +96,18 @@ def cardinality_check(guess_size):
         right_rel="=",
         right=guess_size,
     )
-    naf_count = elpmodel.StandardLiteral(negation="not", atom=count)
-    yield elpmodel.Rule(head=None, body=[naf_count])
+    not_count = elpmodel.StandardLiteral(negation="not", atom=count)
+    yield elpmodel.Rule(head=None, body=[not_count])
 
 
 def subset_check():
     guess = auxmodel.AuxGuess(args=["M"])
     member = auxmodel.AuxMember(args=["_", "S"])
-    naf_member = elpmodel.StandardLiteral(
+    not_member = elpmodel.StandardLiteral(
         negation="not", atom=member.clone(args=["M", "S"])
     )
     element = elpmodel.AggregateElement(
-        terms=["M"], literals=[guess, naf_member]
+        terms=["M"], literals=[guess, not_member]
     )
     count = elpmodel.AggregateAtom(
         name="#count",
