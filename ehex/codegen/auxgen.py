@@ -3,7 +3,7 @@ import sys
 from tatsu.codegen import CodeGenerator, ModelRenderer
 
 from ehex.codegen import elpgen
-from ehex.parser.models.auxmodel import NAF_NAME, PREFIX
+from ehex.parser.models import auxmodel
 from ehex.utils import model
 
 THIS_MODULE = sys.modules[__name__]
@@ -41,11 +41,11 @@ class ModalLiteral(ModelRenderer):
         return self.aux_modal(**fields)
 
     def aux_modal(self, modality, literal, **_):
-        atom = self.rend(literal.atom)
-        atom = model.strip_prefix(atom)
-        if literal.negation:
-            return f"{PREFIX}{modality}_{NAF_NAME}_{atom}"
-        return f"{PREFIX}{modality}_{atom}"
+        literal = auxmodel.AuxLiteral(
+            atom=literal.atom, negation=literal.negation
+        )
+        literal = model.strip_prefix(self.rend(literal))
+        return f"{auxmodel.PREFIX}{modality}_{literal}"
 
 
 class AuxAtom(Atom):
@@ -63,6 +63,17 @@ class AuxAtom(Atom):
         atom = self.rend(fields["args"][0])
         atom = model.strip_prefix(atom)
         return f"{self.node.name}_{atom}"
+
+
+class AuxLiteral(Atom):
+    def render_fields(self, fields):
+        return self.aux_literal(**fields)
+
+    def aux_literal(self, negation, atom, **_):
+        atom = model.strip_prefix(self.rend(atom))
+        if negation:
+            return f"{auxmodel.PREFIX}{auxmodel.NAF_NAME}_{atom}"
+        return atom
 
 
 class HEXExternalAtom(ModelRenderer):

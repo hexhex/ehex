@@ -127,7 +127,6 @@ def ground_reduct(elp, facts):
 
 def with_reduct(elp, facts):
     fact_keys, body_keys = ground_reduct(elp, facts)
-    naf_name = auxmodel.NAF_NAME
 
     def mkey(atom):
         token = atom.token
@@ -141,7 +140,7 @@ def with_reduct(elp, facts):
                 token = token, ()
             name, args = token
             name = name[len(auxmodel.PREFIX) :]
-        name = name.replace(f"M_{naf_name}_", "K_", 1)
+        name = name.replace(f"M_{auxmodel.NAF_NAME}_", "K_", 1)
         return (name, args)
 
     replace = {}
