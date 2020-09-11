@@ -147,7 +147,6 @@ def level_program(
     elp,
     facts,
     context,
-    reduct_out,
     guess_true_facts=None,
 ):
     elements = [
@@ -167,8 +166,16 @@ def level_program(
                 guessing_hints=cfg.guessing_hints,
             ),
         )
+
     if facts.ground:
+        reduct_out = cfg.path.reduct_out.with_suffix(f".{context.level}.lp")
+        reduct_src = generic_reduct(
+            elp, facts.guess_true, facts.guess_false, guessing_hints=False
+        )
+        with reduct_out.open("w") as reduct_file:
+            reduct_file.write(reduct_src)
         elements.append(checking_program(facts.ground, reduct_out))
+
     if cfg.planning_mode:
         elements += [
             "% Planning Mode Guessing Rules",

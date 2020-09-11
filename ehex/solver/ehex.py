@@ -2,7 +2,7 @@ from ehex.codegen import render
 from ehex.parser import elpinput
 from ehex.parser.models import auxmodel
 from ehex.solver import dlvhex, optimize
-from ehex.solver.config import cfg
+from ehex.solver.config import ASP_SEMANTICS, cfg
 from ehex.utils import logging, model, solver
 
 logger = logging.get_logger(__name__)
@@ -88,18 +88,11 @@ def ehex():
             k_facts = facts
 
         lp_out = cfg.path.lp_out.with_suffix(f".{level}.lp")
-        reduct_out = cfg.path.reduct_out.with_suffix(f".{level}.lp")
-        reduct_src = render.generic_reduct(
-            elp, facts.guess_true, facts.guess_false
-        )
-        with reduct_out.open("w") as reduct_file:
-            reduct_file.write(reduct_src)
 
         lp_src = render.level_program(
             elp,
             k_facts,
             context,
-            reduct_out,
             guess_true_facts=k_facts.guess_true - facts.guess_true,
         )
 
@@ -120,7 +113,7 @@ def ehex():
                 "Found {} world view(s) at level {}", len(k_omega), level
             )
         else:
-            logger.info("No world view found at level {}", level)
+            logger.debug("No world view found at level {}", level)
 
         if omega and min_size < guess_size == max_size:
             logger.debug(
@@ -130,6 +123,10 @@ def ehex():
 
 
 def main():
+    if cfg.reduct_semantics != ASP_SEMANTICS[0]:
+        logger.info(
+            "Non-default reduct semantics selected: {}", cfg.reduct_semantics
+        )
     satisfiable = False
     for level, solutions in ehex():
         for line in solver.format_solutions(level, solutions):
