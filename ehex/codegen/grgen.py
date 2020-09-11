@@ -16,7 +16,7 @@ from ehex.utils import model
 #      M not α         not true(K α) │
 
 
-def generic_reduct(elp, guessing_hints=False):
+def generic_reduct(elp, semantics=None, guessing_hints=False):
     aux_true_keys = set()
 
     for rule in elp.rules:
@@ -38,7 +38,7 @@ def generic_reduct(elp, guessing_hints=False):
             key = model.key(model.weak_form(modal))
             if key not in aux_true_keys:
                 aux_true_keys.add(key)
-                yield from replacement_rules(repl.atom)
+                yield from replacement_rules(repl.atom, semantics=semantics)
 
         if not rule.head and guessing_hints:
             yield from constraint_guessing_hints(modals, body)
@@ -72,7 +72,7 @@ def transform_body(body):
         yield (element, repl)
 
 
-def replacement_rules(repl):
+def replacement_rules(repl, semantics=None):
     modal = model.clone_literal(repl.args[0])
     repl = repl.clone(args=[modal])
     atom = modal.literal.atom
@@ -83,7 +83,16 @@ def replacement_rules(repl):
 
     if modal.modality == "M":
         yield elpmodel.Rule(head=repl, body=[guess])
-        yield elpmodel.Rule(head=repl, body=[atom, neg_guess])
+        if semantics == "NEX" and not modal.literal.negation:
+            aux_not_atom = auxmodel.AuxLiteral(atom=atom, negation="not")
+            not_aux_not_atom = elpmodel.StandardLiteral(
+                atom=aux_not_atom, negation="not"
+            )
+            not_atom = elpmodel.StandardLiteral(atom=atom, negation="not")
+            yield elpmodel.Rule(head=repl, body=[not_aux_not_atom, neg_guess])
+            yield elpmodel.Rule(head=aux_not_atom, body=[not_atom, neg_guess])
+        else:
+            yield elpmodel.Rule(head=repl, body=[atom, neg_guess])
     if modal.modality == "K":
         yield elpmodel.Rule(head=repl, body=[atom, neg_guess])
 

@@ -44,7 +44,9 @@ def generic_reduct(
 ):
     elements = [
         "% Generic Epistemic Reduct",
-        *grgen.generic_reduct(elp, guessing_hints=guessing_hints),
+        *grgen.generic_reduct(
+            elp, semantics=cfg.reduct_semantics, guessing_hints=guessing_hints
+        ),
     ]
     if guess_true_facts:
         elements += [
