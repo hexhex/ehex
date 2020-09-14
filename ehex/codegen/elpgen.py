@@ -2,12 +2,24 @@ import sys
 
 from tatsu.codegen import CodeGenerator, ModelRenderer
 
+from ehex.utils.decorators import cached
+
 THIS_MODULE = sys.modules[__name__]
 
 
 class ELPGenerator(CodeGenerator):
     def __init__(self):
         super().__init__(modules=[THIS_MODULE])
+
+    @cached
+    def _cached_render(self, obj):
+        return self.render(obj)
+
+    def __enter__(self):
+        return self._cached_render
+
+    def __exit__(self, *_):
+        pass
 
 
 # ELP Modal Literals

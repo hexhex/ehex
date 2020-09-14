@@ -5,23 +5,33 @@ from tatsu.codegen import CodeGenerator, ModelRenderer
 from ehex.codegen import elpgen
 from ehex.parser.models import auxmodel
 from ehex.utils import model
+from ehex.utils.decorators import cached
 
 THIS_MODULE = sys.modules[__name__]
 
 
 class ELPAuxGenerator(CodeGenerator):
-    def __init__(self, modules=None):
-        if modules is None:
-            modules = [elpgen, THIS_MODULE]
-        super().__init__(modules=modules)
+    def __init__(self):
+        super().__init__(modules=[elpgen, THIS_MODULE])
         self.negations = set()
 
     def __enter__(self):
         self.negations.clear()
-        return self
+        return self._render
 
     def __exit__(self, *_):
         self.negations.clear()
+
+    def _render(self, obj):
+        value, negations = self._cached_render(obj)
+        if negations:
+            self.negations.update(negations)
+        return value
+
+    @cached
+    def _cached_render(self, obj):
+        value = self.render(obj)
+        return value, self.negations.copy()
 
 
 class Atom(elpgen.Atom):

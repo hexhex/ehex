@@ -4,38 +4,25 @@ from ehex.codegen.auxgen import ELPAuxGenerator
 from ehex.codegen.elpgen import ELPGenerator
 from ehex.solver.config import cfg
 from ehex.utils import model
-from ehex.utils.decorators import cached
 
 _elpgen = ELPGenerator()
 _auxgen = ELPAuxGenerator()
 
 
-@cached
-def elprender(obj):
-    return _elpgen.render(obj)
-
-
-@cached
-def auxrender(obj):
-    return _auxgen.render(obj)
-
-
 def aux_program(elements):
-    with _auxgen:
-        elements = [
-            e if isinstance(e, str) else auxrender(e) for e in elements
-        ]
+    with _auxgen as render:
+        elements = [render(e) for e in elements]
         if _auxgen.negations:
             elements += [
-                auxrender(e)
+                render(e)
                 for e in generate.negation_constraints(_auxgen.negations)
             ]
     return "\n\n".join(elements)
 
 
 def positive_program(elp):
-    with _auxgen:
-        elements = [auxrender(e) for e in ppgen.positive_program(elp)]
+    with _auxgen as render:
+        elements = [render(e) for e in ppgen.positive_program(elp)]
     return "\n\n".join(elements)
 
 
@@ -187,6 +174,7 @@ def level_program(
 
 
 def answer_set(elements):
-    elements = [elprender(e) for e in elements]
+    with _elpgen as render:
+        elements = [render(e) for e in elements]
     elements.sort()
     return f"{{{', '.join(elements)}}}"
