@@ -25,10 +25,12 @@ def solve(omega, src, out, pfilter, guess_true_facts=None):
 def ehex():
     elp = elpinput.parse(*cfg.elp_in or [])
     atoms, facts = solver.compute_envelope(elp)
+    if cfg.planning_mode:
+        facts = optimize.with_goal(facts)
 
     if cfg.debug:
         with open(cfg.path.elp_out, "w") as elp_file:
-            elp_file.write(render.elprender(elp))
+            elp_file.write(render.elpgen.render(elp))
 
         modals = frozenset(atom.args[0] for atom in facts.ground)
         logger.debug("Ground weak modals: {}", render.answer_set(modals))
@@ -93,7 +95,6 @@ def ehex():
             elp,
             k_facts,
             context,
-            guess_true_facts=k_facts.guess_true - facts.guess_true,
         )
 
         k_omega = set()

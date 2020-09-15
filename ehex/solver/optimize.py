@@ -71,15 +71,25 @@ def with_consequences(elp, facts, context=None):
         if context:
             k_min = len(guess_true)
             k_max = len(ground_facts) + k_min
-            if not k_min <= context[0] <= k_max:
+            if not k_min <= context.guess_size <= k_max:
                 raise solver.Unsatisfiable
 
+        guesses = {g.token: g for g in facts.guess}
+        guess_remove = [
+            guess for gnd in gnd_remove if (guess := guesses.get(gnd.token))
+        ]
+
         replace = {"ground": ground_facts}
+        if guess_remove:
+            replace["guess"] = facts.guess.difference(guess_remove)
         if guess_true:
             replace["guess_true"] = facts.guess_true.union(guess_true)
         if guess_false:
             replace["guess_false"] = facts.guess_false.union(guess_false)
-        return facts._replace(**replace)
+        facts = facts._replace(**replace)
+
+        if context and guess_true:
+            facts = facts._replace(guess=facts.guess.union(guess_true))
 
     return facts
 
@@ -155,3 +165,18 @@ def with_reduct(elp, facts):
             replace[field] = _atoms.difference(remove)
 
     return facts._replace(**replace)
+
+
+def with_goal(facts):
+    gnd_goal_facts = [
+        g for g in facts.ground if g.args[0].literal.atom.name == "goal"
+    ]
+    guess_goal_facts = []
+
+    for gnd in gnd_goal_facts:
+        negation = "-" if gnd.args[0].literal.negation else None
+        guess = gnd.clone(model=auxmodel.AuxGuess, negation=negation)
+        guess.token = gnd.token
+        guess_goal_facts.append(guess)
+
+    return facts._replace(guess=facts.guess.union(guess_goal_facts))

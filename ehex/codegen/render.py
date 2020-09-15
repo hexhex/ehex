@@ -5,23 +5,23 @@ from ehex.codegen.elpgen import ELPGenerator
 from ehex.solver.config import cfg
 from ehex.utils import model
 
-_elpgen = ELPGenerator()
-_auxgen = ELPAuxGenerator()
+elpgen = ELPGenerator()
+auxgen = ELPAuxGenerator()
 
 
 def aux_program(elements):
-    with _auxgen as render:
+    with auxgen as render:
         elements = [render(e) for e in elements]
-        if _auxgen.negations:
+        if auxgen.negations:
             elements += [
                 render(e)
-                for e in generate.negation_constraints(_auxgen.negations)
+                for e in generate.negation_constraints(auxgen.negations)
             ]
     return "\n\n".join(elements)
 
 
 def positive_program(elp):
-    with _auxgen as render:
+    with auxgen as render:
         elements = [render(e) for e in ppgen.positive_program(elp)]
     return "\n\n".join(elements)
 
@@ -44,24 +44,27 @@ def generic_reduct(elp, guess_true_facts=None, guess_false_facts=None):
     return aux_program(elements)
 
 
-def guessing_program(
-    ground_facts, guess_true_facts=None, guessing_hints=False
-):
+def guessing_program(ground_facts, guess_facts=None, guessing_hints=False):
     elements = []
+    if guess_facts:
+        elements += ["% Guess Facts", *generate.facts(guess_facts)]
     if ground_facts:
-        elements += [
-            "% Guessing Rules",
-            *generate.guessing_rules(
-                ground_facts, guessing_hints=guessing_hints
-            ),
-            "% Ground Facts",
-            *generate.facts(ground_facts),
-        ]
-    if guess_true_facts:
-        elements += [
-            "% Guessing Facts",
-            *generate.facts(guess_true_facts),
-        ]
+        elements += ["% Ground Facts", *generate.facts(ground_facts)]
+        if guess_facts:
+            gnd_map = {gnd.token: gnd for gnd in ground_facts}
+            if gnd_remove := [
+                gnd
+                for guess in guess_facts
+                if (gnd := gnd_map.get(guess.token))
+            ]:
+                ground_facts = ground_facts.difference(gnd_remove)
+        if ground_facts:
+            elements += [
+                "% Guessing Rules",
+                *generate.guessing_rules(
+                    ground_facts, guessing_hints=guessing_hints
+                ),
+            ]
     return aux_program(elements)
 
 
@@ -102,7 +105,8 @@ def enum_program(elp, facts, context=None):
     elements = [
         "%% Enum Program",
         clingo_show_directives(facts.ground),
-        guessing_program(facts.ground, guessing_hints=False),
+        guessing_program(
+            facts.ground, guess_facts=facts.guess, guessing_hints=False
         ),
         generic_reduct(elp, facts.guess_true, facts.guess_false),
     ]
@@ -114,7 +118,9 @@ def enum_program(elp, facts, context=None):
 def grounding_program(elp, facts):
     elements = [
         "% Grounding Program",
-        guessing_program(facts.ground, guessing_hints=cfg.guessing_hints),
+        guessing_program(
+            facts.ground,
+            guess_facts=facts.guess,
             guessing_hints=cfg.guessing_hints,
         ),
         generic_reduct(elp, facts.guess_true, facts.guess_false),
@@ -122,25 +128,19 @@ def grounding_program(elp, facts):
     return aux_program(elements)
 
 
-def level_program(
-    elp,
-    facts,
-    context,
-    guess_true_facts=None,
-):
+def level_program(elp, facts, context):
     elements = [
         f"%% Level {context.level} Program",
         generic_reduct(elp, facts.guess_true, facts.guess_false),
     ]
-    if facts.ground or guess_true_facts:
+    if facts.ground or facts.guess:
         elements.append(
             guessing_program(
                 facts.ground,
-                guess_true_facts=guess_true_facts,
+                guess_facts=facts.guess,
                 guessing_hints=cfg.guessing_hints,
-            ),
+            )
         )
-
     if facts.ground:
         reduct_out = cfg.path.reduct_out.with_suffix(f".{context.level}.lp")
         reduct_src = generic_reduct(elp, facts.guess_true, facts.guess_false)
@@ -148,18 +148,12 @@ def level_program(
             reduct_file.write(reduct_src)
         elements.append(checking_program(facts.ground, reduct_out))
 
-    if cfg.planning_mode:
-        elements += [
-            "% Planning Mode Guessing Rules",
-            *generate.planning_mode_guessing_rules(),
-        ]
-
     elements.append(level_check(context))
     return aux_program(elements)
 
 
 def answer_set(elements):
-    with _elpgen as render:
+    with elpgen as render:
         elements = [render(e) for e in elements]
     elements.sort()
     return f"{{{', '.join(elements)}}}"

@@ -21,8 +21,8 @@ class AssumptionError(RuntimeError):
 
 Facts = namedtuple(
     "Facts",
-    ["ground", "guess_true", "guess_false"],
-    defaults=[frozenset(), frozenset()],
+    ["ground", "guess_true", "guess_false", "guess"],
+    defaults=[frozenset(), frozenset(), frozenset()],
 )
 
 Context = namedtuple("Context", ["guess_size", "omega", "level"])

@@ -131,20 +131,3 @@ def negation_constraints(keys):
         atom = elpmodel.Atom(name=name, args=args)
         natom = model.clone_atom(atom, negation="-")
         yield elpmodel.Rule(head=None, body=[atom, natom])
-
-
-def planning_mode_guessing_rules():
-    goal_atom = elpmodel.Atom(name="goal", args=[])
-    modal1 = elpmodel.ModalLiteral(
-        modality="M",
-        literal=elpmodel.StandardLiteral(atom=goal_atom, negation="not"),
-    )
-    modal2 = elpmodel.ModalLiteral(
-        modality="M", literal=elpmodel.StandardLiteral(atom=goal_atom)
-    )
-    yield from facts(
-        [
-            auxmodel.AuxGuess(args=[modal1], negation="-"),
-            auxmodel.AuxGuess(args=[modal2]),
-        ]
-    )
