@@ -26,14 +26,10 @@ def positive_program(elp):
     return "\n\n".join(elements)
 
 
-def generic_reduct(
-    elp, guess_true_facts=None, guess_false_facts=None, guessing_hints=False
-):
+def generic_reduct(elp, guess_true_facts=None, guess_false_facts=None):
     elements = [
         "% Generic Epistemic Reduct",
-        *grgen.generic_reduct(
-            elp, semantics=cfg.reduct_semantics, guessing_hints=guessing_hints
-        ),
+        *grgen.generic_reduct(elp, semantics=cfg.reduct_semantics),
     ]
     if guess_true_facts:
         elements += [
@@ -107,9 +103,8 @@ def enum_program(elp, facts, context=None):
         "%% Enum Program",
         clingo_show_directives(facts.ground),
         guessing_program(facts.ground, guessing_hints=False),
-        generic_reduct(
-            elp, facts.guess_true, facts.guess_false, guessing_hints=False
         ),
+        generic_reduct(elp, facts.guess_true, facts.guess_false),
     ]
     if context:
         elements.append(level_check(context))
@@ -120,12 +115,9 @@ def grounding_program(elp, facts):
     elements = [
         "% Grounding Program",
         guessing_program(facts.ground, guessing_hints=cfg.guessing_hints),
-        generic_reduct(
-            elp,
-            facts.guess_true,
-            facts.guess_false,
             guessing_hints=cfg.guessing_hints,
         ),
+        generic_reduct(elp, facts.guess_true, facts.guess_false),
     ]
     return aux_program(elements)
 
@@ -138,12 +130,7 @@ def level_program(
 ):
     elements = [
         f"%% Level {context.level} Program",
-        generic_reduct(
-            elp,
-            facts.guess_true,
-            facts.guess_false,
-            guessing_hints=cfg.guessing_hints,
-        ),
+        generic_reduct(elp, facts.guess_true, facts.guess_false),
     ]
     if facts.ground or guess_true_facts:
         elements.append(
@@ -156,9 +143,7 @@ def level_program(
 
     if facts.ground:
         reduct_out = cfg.path.reduct_out.with_suffix(f".{context.level}.lp")
-        reduct_src = generic_reduct(
-            elp, facts.guess_true, facts.guess_false, guessing_hints=False
-        )
+        reduct_src = generic_reduct(elp, facts.guess_true, facts.guess_false)
         with reduct_out.open("w") as reduct_file:
             reduct_file.write(reduct_src)
         elements.append(checking_program(facts.ground, reduct_out))

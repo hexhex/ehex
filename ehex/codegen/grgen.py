@@ -16,7 +16,7 @@ from ehex.utils import model
 #      M not α         not true(K α) │
 
 
-def generic_reduct(elp, semantics=None, guessing_hints=False):
+def generic_reduct(elp, semantics=None):
     aux_true_keys = set()
 
     for rule in elp.rules:
@@ -39,9 +39,6 @@ def generic_reduct(elp, semantics=None, guessing_hints=False):
             if key not in aux_true_keys:
                 aux_true_keys.add(key)
                 yield from replacement_rules(repl.atom, semantics=semantics)
-
-        if not rule.head and guessing_hints:
-            yield from constraint_guessing_hints(modals, body)
 
 
 def transform_body(body):
@@ -113,17 +110,3 @@ def optimized_replacement_rules(guess_facts):
             # for guess(M α) yield true(M α).
             repl = auxmodel.AuxTrue(args=[modal])
             yield elpmodel.Rule(head=repl, body=[])
-
-
-def constraint_guessing_hints(modals, body_repl):
-    for modal in modals:
-        body = body_repl.copy()
-        del body[modal]
-        body = list(body.values())
-        weak_modal = model.weak_form(modal)
-        body.append(auxmodel.AuxGround(args=[weak_modal]))
-        if modal is weak_modal:
-            head = auxmodel.AuxGuess(args=[modal], negation="-")
-        else:
-            head = auxmodel.AuxGuess(args=[weak_modal])
-        yield elpmodel.Rule(head=head, body=body)
