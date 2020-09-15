@@ -79,10 +79,8 @@ def checking_rules(ground_atoms, reduct_out):
             hexb = hexmodel.HEXBraveAtom(program=program, query=atom)
             auxb = auxmodel.AuxBrave(args=[atom])
             not_auxb = elpmodel.StandardLiteral(negation="not", atom=auxb)
-            not_atom = elpmodel.StandardLiteral(negation="not", atom=atom)
 
-            yield elpmodel.Rule(head=auxb, body=[gnd, not_atom, hexb])
-            yield elpmodel.Rule(head=auxb, body=[gnd, atom])
+            yield elpmodel.Rule(head=auxb, body=[gnd, hexb])
             yield elpmodel.Rule(head=None, body=[gnd, guess, not_auxb])
             yield elpmodel.Rule(head=None, body=[gnd, neg_guess, auxb])
 
