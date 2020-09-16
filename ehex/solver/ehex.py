@@ -33,7 +33,11 @@ def ehex():
             elp_file.write(render.elpgen.render(elp))
 
         modals = frozenset(atom.args[0] for atom in facts.ground)
-        logger.debug("Ground weak modals: {}", render.answer_set(modals))
+        logger.debug(
+            "Ground weak modals ({}): {}",
+            len(modals),
+            render.answer_set(modals),
+        )
         logger.debug("Positive envelope: {}", render.answer_set(atoms))
 
     if cfg.compute_consequences:
