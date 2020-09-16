@@ -1,14 +1,11 @@
 import re
 
-from ehex.parser.models import auxmodel
-from ehex.parser.models import elpmodel
-
-from ehex.parser.models.auxmodel import PREFIX, NEG_NAME, NAF_NAME
+from ehex.parser.models import auxmodel, elpmodel
+from ehex.parser.models.auxmodel import NAF_NAME, NEG_NAME, PREFIX
 from ehex.utils import model
+from ehex.utils.decorators import cached
 
-parse_cache = {}
-PAT = re.compile(r'("(?:\\"|[^"])*"|[()])')
-SEP = re.compile(r"[{},.]|\s+")
+PAT = re.compile(r'(\w+|[()]|"(?:\\"|.)*?")')
 
 
 def model_aux_atom(name, args):
@@ -27,7 +24,7 @@ def model_aux_atom(name, args):
         atom = model_atom(name, args)
         return elpmodel.StandardLiteral(negation="not", atom=atom)
 
-    if aux_name == "M" or aux_name == "K":
+    if aux_name in ("M", "K"):
         # M_Naf_Neg_a(...)
         modality = name[0]
         name = name[2:]
@@ -52,9 +49,8 @@ def model_aux_atom(name, args):
             name = name[len(aux_type._name) + 1 :]
             atom = model_atom(name, args)
             return aux_type(args=[atom])
-        else:
-            # Input(...)
-            return aux_type(args=args)
+        # Input(...)
+        return aux_type(args=args)
 
     raise ValueError(f'unknown auxiliary name "{name}"')
 
@@ -90,27 +86,20 @@ def model_args(token):
     return name, [model_term(*model_args(a)) for a in args]
 
 
+@cached
 def model_token(token):
-    try:
-        return parse_cache[token]
-    except KeyError:
-        pass
-
     atom = model_atom(*model_args(token))
     atom.token = token
-    parse_cache[token] = atom
     return atom
 
 
 def tokenize(text):
     # Adapted from http://stackoverflow.com/a/14715850
     stack = [[]]
-    for x in PAT.split(text):
-        if x.startswith('"'):
-            stack[-1].append(x)
-        elif x == "(":
+    for match in PAT.findall(text):
+        if match == "(":
             stack.append([])
-        elif x == ")":
+        elif match == ")":
             args = tuple(stack.pop())
             if not stack:
                 raise ValueError("opening bracket is missing")
@@ -120,11 +109,10 @@ def tokenize(text):
                 raise ValueError("expected name before opening bracket")
             stack[-1][-1] = (name, args)
         else:
-            stack[-1] += [s for s in SEP.split(x) if s]
+            stack[-1].append(match)
     if len(stack) > 1:
         raise ValueError("closing bracket is missing")
-    result = [(t, ()) if isinstance(t, str) else t for t in stack.pop()]
-    return result
+    return [(t, ()) if isinstance(t, str) else t for t in stack[0]]
 
 
 def parse_line(text):

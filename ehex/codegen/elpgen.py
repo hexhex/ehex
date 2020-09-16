@@ -1,7 +1,8 @@
 import sys
 
-from tatsu.codegen import ModelRenderer
-from tatsu.codegen import CodeGenerator
+from tatsu.codegen import CodeGenerator, ModelRenderer
+
+from ehex.utils.decorators import cached
 
 THIS_MODULE = sys.modules[__name__]
 
@@ -9,6 +10,16 @@ THIS_MODULE = sys.modules[__name__]
 class ELPGenerator(CodeGenerator):
     def __init__(self):
         super().__init__(modules=[THIS_MODULE])
+
+    @cached
+    def _cached_render(self, obj):
+        return self.render(obj)
+
+    def __enter__(self):
+        return self._cached_render
+
+    def __exit__(self, *_):
+        pass
 
 
 # ELP Modal Literals
@@ -64,7 +75,7 @@ class Atom(ModelRenderer):
         template = "{name}"
         fields.setdefault("name", self.node.name)
         if fields.get("negation"):
-            template = fields["negation"] + template
+            template = f"¬{template}"
         if fields["args"]:
             template += "({args::, :})"
         return template

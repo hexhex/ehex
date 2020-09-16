@@ -1,5 +1,5 @@
-from ehex.utils import model
 from ehex.parser.models import elpmodel
+from ehex.utils import model
 
 PREFIX = "z_"
 NEG_NAME = "Neg"
@@ -20,7 +20,7 @@ class AuxAtom(elpmodel.Atom):
 
 
 class AuxGuess(AuxAtom):
-    _name = "Guess"
+    _name = "G"
     name = PREFIX + _name
 
 
@@ -56,3 +56,7 @@ class AuxCautious(AuxAtom):
     _name = "Cautious"
     style = "flat"
     name = PREFIX + _name
+
+
+class AuxLiteral(elpmodel.StandardLiteral):
+    pass

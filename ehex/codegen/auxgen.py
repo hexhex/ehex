@@ -1,34 +1,37 @@
 import sys
 
-from tatsu.codegen import ModelRenderer
-from tatsu.codegen import CodeGenerator
+from tatsu.codegen import CodeGenerator, ModelRenderer
 
-from ehex.utils import model
 from ehex.codegen import elpgen
-from ehex.parser.models import elpmodel
-from ehex.parser.models.auxmodel import PREFIX, NAF_NAME
+from ehex.parser.models import auxmodel
+from ehex.utils import model
+from ehex.utils.decorators import cached
 
 THIS_MODULE = sys.modules[__name__]
 
 
 class ELPAuxGenerator(CodeGenerator):
-    def __init__(self, modules=None):
-        if modules is None:
-            modules = [elpgen, THIS_MODULE]
-        super().__init__(modules=modules)
-        self.aux_neg_keys = set()
-        self.aux_rules = []
+    def __init__(self):
+        super().__init__(modules=[elpgen, THIS_MODULE])
+        self.negations = set()
 
+    def __enter__(self):
+        self.negations.clear()
+        return self._render
 
-class Program(elpgen.Program):
-    def __init__(self, *args, **kws):
-        super().__init__(*args, **kws)
-        self.context.aux_neg_keys.clear()
-        self.context.aux_rules.clear()
+    def __exit__(self, *_):
+        self.negations.clear()
 
-    def render_fields(self, fields):
-        rules = [self.rend(rule) for rule in fields["rules"]]
-        fields.update(rules=rules + self.context.aux_rules)
+    def _render(self, obj):
+        value, negations = self._cached_render(obj)
+        if negations:
+            self.negations.update(negations)
+        return value
+
+    @cached
+    def _cached_render(self, obj):
+        value = self.render(obj)
+        return value, self.negations.copy()
 
 
 class Atom(elpgen.Atom):
@@ -38,33 +41,21 @@ class Atom(elpgen.Atom):
         return super().render_fields(fields)
 
     def handle_neg(self, fields):
-        name = fields["name"]
-        args = fields["args"]
         if not fields.get("no_constraint"):
-            key = (name, len(args))
-            if key not in self.context.aux_neg_keys:
-                self.context.aux_neg_keys.add(key)
-                self.context.aux_rules.append(self.aux_neg_rule(*key))
-        fields.update(negation=None, name=model.neg_name(name))
-
-    @staticmethod
-    def aux_neg_rule(name, arity):
-        args = [f"T{i+1}" for i in range(arity)]
-        atom = elpmodel.Atom(name=name, args=args)
-        natom = model.clone_atom(atom, negation="-")
-        return elpmodel.Rule(head=None, body=[atom, natom])
+            self.context.negations.add((fields["name"], len(fields["args"])))
+        fields.update(negation=None, name=model.neg_name(fields["name"]))
 
 
 class ModalLiteral(ModelRenderer):
     def render_fields(self, fields):
         return self.aux_modal(**fields)
 
-    def aux_modal(self, modality, literal, **kws):
-        atom = self.rend(literal.atom)
-        atom = model.strip_prefix(atom)
-        if literal.negation:
-            return f"{PREFIX}{modality}_{NAF_NAME}_{atom}"
-        return f"{PREFIX}{modality}_{atom}"
+    def aux_modal(self, modality, literal, **_):
+        literal = auxmodel.AuxLiteral(
+            atom=literal.atom, negation=literal.negation
+        )
+        literal = model.strip_prefix(self.rend(literal))
+        return f"{auxmodel.PREFIX}{modality}_{literal}"
 
 
 class AuxAtom(Atom):
@@ -84,6 +75,17 @@ class AuxAtom(Atom):
         return f"{self.node.name}_{atom}"
 
 
+class AuxLiteral(Atom):
+    def render_fields(self, fields):
+        return self.aux_literal(**fields)
+
+    def aux_literal(self, negation, atom, **_):
+        atom = model.strip_prefix(self.rend(atom))
+        if negation:
+            return f"{auxmodel.PREFIX}{auxmodel.NAF_NAME}_{atom}"
+        return atom
+
+
 class HEXExternalAtom(ModelRenderer):
     def render_fields(self, fields):
         fields.update(name=self.node.name, program_type=self.node.program_type)
@@ -95,12 +97,14 @@ class HEXExternalAtom(ModelRenderer):
 
 class HEXReasoningAtom(HEXExternalAtom):
     def render_fields(self, fields):
-        q = fields["query"]
+        query = fields["query"]
         in_args = [
             self.node.program_type,
             fields["program"],
             self.node.input_name,
-            model.clone_atom(q, args=[], no_constraint=True),
+            model.clone_atom(query, args=[], no_constraint=True),
         ]
-        fields.update(name=self.node.name, in_args=in_args, out_args=q.args)
+        fields.update(
+            name=self.node.name, in_args=in_args, out_args=query.args
+        )
         return super().render_fields(fields)
