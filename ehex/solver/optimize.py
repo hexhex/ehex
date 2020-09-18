@@ -154,10 +154,13 @@ def with_reduct(elp, facts):
         return (name, args)
 
     replace = {}
+    whitelist = {f.token for f in facts.ground & facts.guess}
     for field, _atoms in facts._asdict().items():
         remove = []
 
         for atom in _atoms:
+            if atom.token in whitelist:
+                continue
             if mkey(atom) not in fact_keys | body_keys:
                 remove.append(atom)
 
