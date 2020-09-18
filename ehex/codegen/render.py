@@ -68,7 +68,7 @@ def guessing_program(ground_facts, guess_facts=None, guessing_hints=False):
     return aux_program(elements)
 
 
-def checking_program(ground_facts, reduct_out):
+def consistency_checking_program(ground_facts, reduct_out):
     elements = [
         "% Consistency Checking Program",
         *generate.input_rules(),
@@ -77,10 +77,10 @@ def checking_program(ground_facts, reduct_out):
     return aux_program(elements)
 
 
-def level_check(context):
+def maximality_checking_program(context):
     elements = [
         "% Cardinality Checking Program",
-        aux_program(generate.cardinality_check(context.guess_size)),
+        *generate.cardinality_check(context.guess_size),
     ]
     if context.omega:
         elements += [
@@ -111,7 +111,7 @@ def enum_program(elp, facts, context=None):
         generic_reduct(elp, facts.guess_true, facts.guess_false),
     ]
     if context:
-        elements.append(level_check(context))
+        elements.append(maximality_checking_program(context))
     return aux_program(elements)
 
 
@@ -146,9 +146,9 @@ def level_program(elp, facts, context):
         reduct_src = generic_reduct(elp, facts.guess_true, facts.guess_false)
         with reduct_out.open("w") as reduct_file:
             reduct_file.write(reduct_src)
-        elements.append(checking_program(facts.ground, reduct_out))
+        elements.append(consistency_checking_program(facts.ground, reduct_out))
 
-    elements.append(level_check(context))
+    elements.append(maximality_checking_program(context))
     return aux_program(elements)
 
 
