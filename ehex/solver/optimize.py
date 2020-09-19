@@ -170,7 +170,40 @@ def with_reduct(elp, facts):
     return facts._replace(**replace)
 
 
-def with_goal(facts):
+def assert_planning_mode(atoms, facts):
+
+    try:
+        horizon = next(int(a.args[0]) for a in atoms if a.name == "horizon")
+    except (StopIteration, ValueError):
+        raise solver.AssumptionError(
+            "planning mode: expected an atom of the form 'horizon(N)'"
+        )
+
+    assumed = {"M goal/0", "M not goal/0", "M occurs/2"}
+    parsed = {}
+
+    for atom in facts.ground:
+        modal = atom.args[0]
+        op = "M not" if modal.literal.negation else "M"
+        atom = modal.literal.atom
+        key = f"{op} {atom.name}/{len(atom.args)}"
+        parsed[key] = modal
+
+    if any((unexp := parsed[key]) for key in (parsed.keys() - assumed)):
+        unexp = render.elpgen.render(unexp)
+        raise solver.AssumptionError(
+            f"planning mode: unexpected modal literal: {unexp}"
+        )
+
+    if any((missing := key) for key in (assumed - parsed.keys())):
+        raise solver.AssumptionError(
+            f"planning mode: expected a modal literal of the form '{missing}'"
+        )
+
+    return horizon
+
+
+def with_planning_mode(facts):
     gnd_goal_facts = [
         g for g in facts.ground if g.args[0].literal.atom.name == "goal"
     ]

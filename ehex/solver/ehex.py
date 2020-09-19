@@ -26,7 +26,8 @@ def ehex():
     elp = elpinput.parse(*cfg.elp_in or [])
     atoms, facts = solver.compute_envelope(elp)
     if cfg.planning_mode:
-        facts = optimize.with_goal(facts)
+        horizon = optimize.assert_planning_mode(atoms, facts)
+        facts = optimize.with_planning_mode(facts)
 
     if cfg.debug:
         with open(cfg.path.elp_out, "w") as elp_file:
@@ -49,15 +50,7 @@ def ehex():
         facts = optimize.with_reduct(elp, facts)
 
     if cfg.planning_mode:
-        try:
-            horizon = next(
-                int(a.args[0]) for a in atoms if a.name == "horizon"
-            )
-        except (StopIteration, ValueError):
-            raise solver.AssumptionError(
-                "expected an atom of the form 'horizon(N)' in the input program"
-            )
-        min_size = max_size = horizon + 1
+        min_size = max_size = horizon + 1 - len(facts.guess_true)
     else:
         min_size = 0
         max_size = len(facts.ground)
