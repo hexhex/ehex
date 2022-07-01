@@ -1,24 +1,31 @@
+from dataclasses import dataclass
+from typing import Any
+
 from tatsu.objectmodel import Node
 
 from ehex.parser.models import auxmodel
 
 
+@dataclass(eq=False)
 class HEXExternalAtom(Node):
-    name = None
-    in_args = None
-    out_args = None
+    name: Any = None
+    in_args: Any = None
+    out_args: Any = None
 
 
+@dataclass(eq=False)
 class HEXReasoningAtom(HEXExternalAtom):
-    program_type = "file"
-    program = None
-    input_name = auxmodel.PREFIX + auxmodel.AuxInput._name
-    query = None
+    program_type: Any = "file"
+    program: Any = None
+    input_name: Any = auxmodel.PREFIX + auxmodel.AuxInput._name
+    query: Any = None
 
 
+@dataclass(eq=False)
 class HEXBraveAtom(HEXReasoningAtom):
-    name = "&hexBrave"
+    name: Any = "&hexBrave"
 
 
+@dataclass(eq=False)
 class HEXCautiousAtom(HEXReasoningAtom):
-    name = "&hexCautious"
+    name :Any= "&hexCautious"

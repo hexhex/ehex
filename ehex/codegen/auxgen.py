@@ -41,7 +41,7 @@ class Atom(elpgen.Atom):
         return super().render_fields(fields)
 
     def handle_neg(self, fields):
-        if not fields.get("no_constraint"):
+        if self.node.negation is not model.NO_CONSTRAINT:
             self.context.negations.add((fields["name"], len(fields["args"])))
         fields.update(negation=None, name=model.neg_name(fields["name"]))
 

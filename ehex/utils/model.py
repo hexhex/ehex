@@ -1,5 +1,7 @@
 from ehex.parser.models import auxmodel, elpmodel
 
+NO_CONSTRAINT = object()
+
 
 def opposite(node):
     if isinstance(node, elpmodel.Atom):
@@ -22,13 +24,21 @@ def weak_form(modal):
     return modal
 
 
-def clone_atom(atom, model=None, name=None, **kws):
-    kws.setdefault("negation", atom.negation)
-    kws.setdefault("args", atom.args[:])
-    model = model or type(atom)
-    if not issubclass(model, auxmodel.AuxAtom):
-        kws["name"] = name or atom.name
-    return model(**kws)
+def clone_atom(
+    atom, model=None, args=None, name=None, negation=None, no_constraint=False
+):
+    if model is None:
+        model = type(atom)
+    if args is None:
+        args = atom.args[:]
+    if issubclass(model, auxmodel.AuxAtom):
+        name = model.name
+    else:
+        name = name or atom.name
+    negation = negation or atom.negation
+    if negation and no_constraint:
+        negation = NO_CONSTRAINT
+    return model(args=args, name=name, negation=negation)
 
 
 def clone_literal(obj, **kws):

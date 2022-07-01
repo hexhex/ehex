@@ -56,7 +56,7 @@ def elpparse(src, name="<src>"):
     # This name may occur in error messages
     return _elpparser.parse(
         src,
-        "program",
+        rule_name="program",
         filename=name,
         semantics=ModelBuilder(),
     )

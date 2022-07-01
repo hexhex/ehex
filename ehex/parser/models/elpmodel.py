@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # CAVEAT UTILITOR
 #
@@ -10,12 +9,16 @@
 # Any changes you make to it will be overwritten the next time
 # the file is generated.
 
-from __future__ import generator_stop
+from __future__ import annotations
+
+from typing import Any
+from dataclasses import dataclass
 
 from tatsu.objectmodel import Node
 from tatsu.semantics import ModelBuilderSemantics
 
 
+@dataclass(eq=False)
 class ModelBase(Node):
     pass
 
@@ -28,102 +31,122 @@ class ELPModelBuilderSemantics(ModelBuilderSemantics):
         ] + (types or [])
         super(ELPModelBuilderSemantics, self).__init__(context=context, types=types)
 
+@dataclass(eq=False)
 class Term(ModelBase):
     pass
 
 
+@dataclass(eq=False)
 class Program(ModelBase):
-    rules = None
+    rules: Any = None
 
 
+@dataclass(eq=False)
 class Rule(ModelBase):
-    body = None
-    head = None
+    body: Any = None
+    head: Any = None
 
 
+@dataclass(eq=False)
 class Disjunction(ModelBase):
-    atoms = None
+    atoms: Any = None
 
 
+@dataclass(eq=False)
 class StandardLiteral(ModelBase):
-    atom = None
-    negation = None
+    atom: Any = None
+    negation: Any = None
 
 
+@dataclass(eq=False)
 class Atom(ModelBase):
-    args = None
-    name = None
-    negation = None
+    args: Any = None
+    name: Any = None
+    negation: Any = None
 
 
+@dataclass(eq=False)
 class BuiltinAtom(ModelBase):
-    left = None
-    rel = None
-    right = None
+    left: Any = None
+    rel: Any = None
+    right: Any = None
 
 
+@dataclass(eq=False)
 class ChoiceAtom(ModelBase):
-    elements = None
-    left = None
-    left_rel = None
-    right = None
-    right_rel = None
+    elements: Any = None
+    left: Any = None
+    left_rel: Any = None
+    right: Any = None
+    right_rel: Any = None
 
 
+@dataclass(eq=False)
 class ChoiceElement(ModelBase):
-    atom = None
-    literals = None
+    atom: Any = None
+    literals: Any = None
 
 
+@dataclass(eq=False)
 class AggregateLiteral(ModelBase):
-    atom = None
-    negation = None
+    atom: Any = None
+    negation: Any = None
 
 
+@dataclass(eq=False)
 class AggregateAtom(ModelBase):
-    elements = None
-    left = None
-    left_rel = None
-    name = None
-    right = None
-    right_rel = None
+    elements: Any = None
+    left: Any = None
+    left_rel: Any = None
+    name: Any = None
+    right: Any = None
+    right_rel: Any = None
 
 
+@dataclass(eq=False)
 class AggregateElement(ModelBase):
-    literals = None
-    terms = None
+    literals: Any = None
+    terms: Any = None
 
 
+@dataclass(eq=False)
 class IntervalTerm(Term):
     pass
 
 
+@dataclass(eq=False)
 class ArithmeticTerm(Term):
     pass
 
 
+@dataclass(eq=False)
 class FunctionalTerm(Term):
-    args = None
-    name = None
+    args: Any = None
+    name: Any = None
 
 
+@dataclass(eq=False)
 class SubTerm(Term):
     pass
 
 
+@dataclass(eq=False)
 class NegativeTerm(Term):
     pass
 
 
+@dataclass(eq=False)
 class ConstantTerm(Term):
     pass
 
 
+@dataclass(eq=False)
 class VariableTerm(Term):
     pass
 
 
+@dataclass(eq=False)
 class ModalLiteral(ModelBase):
-    literal = None
-    modality = None
-    negation = None
+    literal: Any = None
+    modality: Any = None
+    negation: Any = None
