@@ -29,7 +29,7 @@ class ELPModelBuilderSemantics(ModelBuilderSemantics):
             t for t in globals().values()
             if type(t) is type and issubclass(t, ModelBase)
         ] + (types or [])
-        super(ELPModelBuilderSemantics, self).__init__(context=context, types=types)
+        super().__init__(context=context, types=types)
 
 @dataclass(eq=False)
 class Term(ModelBase):

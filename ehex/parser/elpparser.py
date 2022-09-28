@@ -56,6 +56,7 @@ class ELPParser(Parser):
             namechars='',
             parseinfo=False,
             keywords=KEYWORDS,
+            start='program',
         )
         config = config.replace(**settings)
         super().__init__(config=config)
@@ -70,6 +71,7 @@ class ELPParser(Parser):
         self._closure(block1)
         self.name_last_node('rules')
         self._check_eof()
+
         self._define(
             ['rules'],
             []
@@ -93,6 +95,7 @@ class ELPParser(Parser):
                         )
                 self.name_last_node('body')
                 self._token('.')
+
                 self._define(
                     ['body'],
                     []
@@ -116,6 +119,7 @@ class ELPParser(Parser):
                                         '<body>'
                                     )
                             self.name_last_node('body')
+
                             self._define(
                                 ['body'],
                                 []
@@ -123,15 +127,12 @@ class ELPParser(Parser):
                         with self._option():
                             self._empty_closure()
                             self.name_last_node('body')
-                            self._define(
-                                ['body'],
-                                []
-                            )
                         self._error(
                             'expecting one of: '
                             '<CONS>'
                         )
                 self._token('.')
+
                 self._define(
                     ['body', 'head'],
                     []
@@ -141,10 +142,6 @@ class ELPParser(Parser):
                 "':-' '←' <CONS> <choice_atom>"
                 '<disjunction> <head>'
             )
-        self._define(
-            ['body', 'head'],
-            []
-        )
 
     @tatsumasu()
     def _head_(self):  # noqa
@@ -189,7 +186,6 @@ class ELPParser(Parser):
                         '<builtin_atom> <classical_atom>'
                         '<naf_aggregate> <naf_literal> <term>'
                     )
-
             self._error(
                 'expecting one of: '
                 "'K' 'M' 'not' <NOT> <aggregate_atom>"
@@ -208,7 +204,13 @@ class ELPParser(Parser):
             self._cut()
             self._classical_atom_()
             self.add_last_node_to_name('atoms')
+
+            self._define(
+                [],
+                ['atoms']
+            )
         self._closure(block1)
+
         self._define(
             [],
             ['atoms']
@@ -235,6 +237,7 @@ class ELPParser(Parser):
                 self._cut()
                 self._classical_atom_()
                 self.name_last_node('atom')
+
                 self._define(
                     ['atom', 'negation'],
                     []
@@ -252,19 +255,11 @@ class ELPParser(Parser):
                             '<classical_atom> <term>'
                         )
                 self.name_last_node('atom')
-                self._define(
-                    ['atom'],
-                    []
-                )
             self._error(
                 'expecting one of: '
                 "'not' <LNOT> <NAME> <NOT> <builtin_atom>"
                 '<classical_atom> <term>'
             )
-        self._define(
-            ['atom', 'negation'],
-            []
-        )
 
     @tatsumasu('Atom')
     def _classical_atom_(self):  # noqa
@@ -272,6 +267,11 @@ class ELPParser(Parser):
             self._LNOT_()
             self.name_last_node('negation')
             self._cut()
+
+            self._define(
+                ['negation'],
+                []
+            )
         self._NAME_()
         self.name_last_node('name')
         with self._group():
@@ -291,6 +291,7 @@ class ELPParser(Parser):
                             )
                     self.name_last_node('args')
                     self._token(')')
+
                     self._define(
                         ['args'],
                         []
@@ -298,14 +299,11 @@ class ELPParser(Parser):
                 with self._option():
                     self._empty_closure()
                     self.name_last_node('args')
-                    self._define(
-                        ['args'],
-                        []
-                    )
                 self._error(
                     'expecting one of: '
                     "'('"
                 )
+
         self._define(
             ['args', 'name', 'negation'],
             []
@@ -319,6 +317,7 @@ class ELPParser(Parser):
         self.name_last_node('rel')
         self._term_()
         self.name_last_node('right')
+
         self._define(
             ['left', 'rel', 'right'],
             []
@@ -331,6 +330,11 @@ class ELPParser(Parser):
             self.name_last_node('left')
             self._rel_op_()
             self.name_last_node('left_rel')
+
+            self._define(
+                ['left', 'left_rel'],
+                []
+            )
         self._token('{')
         self._cut()
         with self._group():
@@ -350,6 +354,12 @@ class ELPParser(Parser):
             self.name_last_node('right_rel')
             self._term_()
             self.name_last_node('right')
+
+            self._define(
+                ['right', 'right_rel'],
+                []
+            )
+
         self._define(
             ['elements', 'left', 'left_rel', 'right', 'right_rel'],
             []
@@ -387,6 +397,7 @@ class ELPParser(Parser):
                                 '<naf_literals>'
                             )
                     self.name_last_node('literals')
+
                     self._define(
                         ['literals'],
                         []
@@ -394,14 +405,11 @@ class ELPParser(Parser):
                 with self._option():
                     self._empty_closure()
                     self.name_last_node('literals')
-                    self._define(
-                        ['literals'],
-                        []
-                    )
                 self._error(
                     'expecting one of: '
                     "':'"
                 )
+
         self._define(
             ['atom', 'literals'],
             []
@@ -414,6 +422,7 @@ class ELPParser(Parser):
             self.name_last_node('negation')
         self._aggregate_atom_()
         self.name_last_node('atom')
+
         self._define(
             ['atom', 'negation'],
             []
@@ -426,6 +435,11 @@ class ELPParser(Parser):
             self.name_last_node('left')
             self._rel_op_()
             self.name_last_node('left_rel')
+
+            self._define(
+                ['left', 'left_rel'],
+                []
+            )
         self._aggregate_name_()
         self.name_last_node('name')
         self._cut()
@@ -439,6 +453,12 @@ class ELPParser(Parser):
             self.name_last_node('right_rel')
             self._term_()
             self.name_last_node('right')
+
+            self._define(
+                ['right', 'right_rel'],
+                []
+            )
+
         self._define(
             ['elements', 'left', 'left_rel', 'name', 'right', 'right_rel'],
             []
@@ -484,6 +504,7 @@ class ELPParser(Parser):
                                 '<naf_literals>'
                             )
                     self.name_last_node('literals')
+
                     self._define(
                         ['literals'],
                         []
@@ -491,14 +512,11 @@ class ELPParser(Parser):
                 with self._option():
                     self._empty_closure()
                     self.name_last_node('literals')
-                    self._define(
-                        ['literals'],
-                        []
-                    )
                 self._error(
                     'expecting one of: '
                     "':'"
                 )
+
         self._define(
             ['literals', 'terms'],
             []
@@ -700,6 +718,7 @@ class ELPParser(Parser):
                 )
         self.name_last_node('args')
         self._token(')')
+
         self._define(
             ['args', 'name'],
             []
@@ -744,7 +763,7 @@ class ELPParser(Parser):
                 self._NUMBER_()
             self._error(
                 'expecting one of: '
-                '"(\\"|[^"])*" <NAME> <NUMBER> <STRING>'
+                '"(?:\\"|[^"])*" <NAME> <NUMBER> <STRING>'
                 '[a-z][a-zA-Z0-9_]* \\d+'
             )
 
@@ -787,7 +806,7 @@ class ELPParser(Parser):
 
     @tatsumasu('str')
     def _STRING_(self):  # noqa
-        self._pattern('"(\\\\"|[^"])*"')
+        self._pattern('"(?:\\\\"|[^"])*"')
 
     @tatsumasu('int')
     def _NUMBER_(self):  # noqa
@@ -819,6 +838,7 @@ class ELPParser(Parser):
                     self._NOT_()
                 self._naf_literal_()
                 self.name_last_node('literal')
+
                 self._define(
                     ['literal', 'modality', 'negation'],
                     []
@@ -838,6 +858,7 @@ class ELPParser(Parser):
                 self._cut()
                 self._naf_literal_()
                 self.name_last_node('literal')
+
                 self._define(
                     ['literal', 'modality'],
                     []
@@ -846,10 +867,6 @@ class ELPParser(Parser):
                 'expecting one of: '
                 "'K' 'M' 'not' <NOT>"
             )
-        self._define(
-            ['literal', 'modality', 'negation'],
-            []
-        )
 
     @tatsumasu()
     def __body_literal_(self):  # noqa
@@ -1001,9 +1018,7 @@ class ELPSemantics:
         return ast
 
 
-def main(filename, start=None, **kwargs):
-    if start is None:
-        start = 'program'
+def main(filename, **kwargs):
     if not filename or filename == '-':
         text = sys.stdin.read()
     else:
@@ -1012,7 +1027,6 @@ def main(filename, start=None, **kwargs):
     parser = ELPParser()
     return parser.parse(
         text,
-        rule_name=start,
         filename=filename,
         **kwargs
     )
