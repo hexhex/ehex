@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="ehex-solver",
-    version="0.2",
+    version="0.3",
     author="Tonico Strasser",
     author_email="tonico.strasser@gmail.com",
     description="Epistemic logic program solver using HEX programs",

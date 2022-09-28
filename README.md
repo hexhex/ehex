@@ -26,7 +26,3 @@ Modals: {M a}
 ```
 
 Some example programs are included in the [examples](examples) directory.
-
-## Development Status
-
-The solver is still under development and some optimizations are missing, which were already implemented in an earlier implementation [draft](https://github.com/hexhex/ehex/releases/tag/draft).
