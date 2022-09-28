@@ -70,5 +70,5 @@ arith_op = '+' | '-' | '*' | '/';
 
 @name NAME = /[a-z][a-zA-Z0-9_]*/ ;
 VARIABLE = /[A-Z][a-zA-Z0-9_]*/ ;
-STRING::str = /"(\\"|[^"])*"/;
+STRING::str = /"(?:\\"|[^"])*"/;
 NUMBER::int = /\d+/ ;
